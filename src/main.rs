@@ -13,7 +13,7 @@ fn main()  {
     let command = &args[1];
     let filename = &args[2];
     
-    let is_error =  false;
+    let mut is_error =  false;
     
     match command.as_str() {
         "tokenize" => {
@@ -41,7 +41,7 @@ fn main()  {
                     ';' => println!("SEMICOLON ; null"),
                     unknow => {
                         eprintln!("[line 1] Error: Unexpected character: {}", unknow);
-                        
+                        is_error = true;
                     },
                 });
             }
