@@ -27,23 +27,35 @@ fn main()  {
 
             
             if !file_contents.is_empty() {
-                file_contents.chars().for_each(|c| match c {
-                    '(' => println!("LEFT_PAREN ( null"),
-                    ')' => println!("RIGHT_PAREN ) null"),
-                    '{' => println!("LEFT_BRACE {{ null"),
-                    '}' => println!("RIGHT_BRACE }} null"),
-                    '*' => println!("STAR * null"),
-                    '.' => println!("DOT . null"),
-                    ',' => println!("COMMA , null"),
-                    '+' => println!("PLUS + null"),
-                    '-' => println!("MINUS - null"),
-                    '/' => println!("SLASH // null"),
-                    ';' => println!("SEMICOLON ; null"),
-                    unknow => {
-                        eprintln!("[line 1] Error: Unexpected character: {}", unknow);
-                        is_error = true;
-                    },
-                });
+                
+                let mut chars = file_contents.chars().peekable();
+                while let Some(char) = chars.next() {
+                    match char {
+                        '(' => println!("LEFT_PAREN ( null"),
+                        ')' => println!("RIGHT_PAREN ) null"),
+                        '{' => println!("LEFT_BRACE {{ null"),
+                        '}' => println!("RIGHT_BRACE }} null"),
+                        '*' => println!("STAR * null"),
+                        '.' => println!("DOT . null"),
+                        ',' => println!("COMMA , null"),
+                        '+' => println!("PLUS + null"),
+                        '-' => println!("MINUS - null"),
+                        '/' => println!("SLASH // null"),
+                        ';' => println!("SEMICOLON ; null"),
+                        '=' => {
+                            if chars.peek() == Some(&'=') {
+                                chars.next(); 
+                                println!("EQUAL_EQUAL == null");
+                            } else {
+                                println!("EQUAL = null");
+                            }
+                        },
+                        unknow => {
+                            eprintln!("[line 1] Error: Unexpected character: {}", unknow);
+                            is_error = true;
+                        },
+                    }
+                }
             }
             println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
         }
