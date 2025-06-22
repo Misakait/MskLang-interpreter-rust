@@ -12,9 +12,9 @@ fn main()  {
 
     let command = &args[1];
     let filename = &args[2];
-    
+
     let mut is_error =  false;
-    
+
     match command.as_str() {
         "tokenize" => {
             // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -24,9 +24,8 @@ fn main()  {
                 String::new()
             });
 
-            
             if !file_contents.is_empty() {
-                
+
                 let mut chars = file_contents.chars().peekable();
                 while let Some(char) = chars.next() {
                     match char {
@@ -54,7 +53,7 @@ fn main()  {
                         ';' => println!("SEMICOLON ; null"),
                         '=' => {
                             if chars.peek() == Some(&'=') {
-                                chars.next(); 
+                                chars.next();
                                 println!("EQUAL_EQUAL == null");
                             } else {
                                 println!("EQUAL = null");
@@ -83,6 +82,9 @@ fn main()  {
                             } else {
                                 println!("LESS < null");
                             }
+                        },
+                        '\t' | '\n' | ' ' | '\r' => {
+                            // Ignore whitespace
                         },
                         unknow => {
                             eprintln!("[line 1] Error: Unexpected character: {}", unknow);
