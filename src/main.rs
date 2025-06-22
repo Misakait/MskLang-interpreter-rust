@@ -42,7 +42,11 @@ fn main()  {
                         '/' => {
                             if chars.peek() == Some(&'/') {
                                 chars.next(); // Consume the second slash
-                                while Some('\n') != chars.next(){}
+                                while let Some(c) = chars.next()  {
+                                    if c == '\n' {
+                                        break; // Stop at the end of the line
+                                    }
+                                }
                             } else {
                                 println!("SLASH / null");
                             }
