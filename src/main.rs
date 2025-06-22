@@ -1,8 +1,9 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process::exit;
 
-fn main() {
+fn main()  {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
@@ -11,7 +12,9 @@ fn main() {
 
     let command = &args[1];
     let filename = &args[2];
-
+    
+    let is_error =  false;
+    
     match command.as_str() {
         "tokenize" => {
             // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -22,7 +25,7 @@ fn main() {
                 String::new()
             });
 
-          
+            
             if !file_contents.is_empty() {
                 file_contents.chars().for_each(|c| match c {
                     '(' => println!("LEFT_PAREN ( null"),
@@ -36,7 +39,10 @@ fn main() {
                     '-' => println!("MINUS - null"),
                     '/' => println!("SLASH // null"),
                     ';' => println!("SEMICOLON ; null"),
-                    _ => println!("Unknown token"),
+                    unknow => {
+                        eprintln!("[line 1] Error: Unexpected character: {}", unknow);
+                        
+                    },
                 });
             }
             println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
@@ -46,4 +52,8 @@ fn main() {
             return;
         }
     }
+    if is_error {
+        exit(65);
+    }
+    exit(0);
 }
