@@ -83,6 +83,22 @@ fn main()  {
                                 println!("LESS < null");
                             }
                         },
+                        '"' => {
+                            let mut string_literal = String::new();
+                            let mut is_close = false;
+                            while let Some(c) = chars.next() {
+                                if c == '"' {
+                                    is_close = true;
+                                    break; 
+                                }
+                                string_literal.push(c);
+                            }
+                            if !is_close{
+                                eprintln!("[line {}] Error: Unterminated string.",line);
+                            }else {
+                                println!("STRING \"{}\" {}",string_literal, string_literal);
+                            }
+                        },
                         '\t' | ' ' | '\r' => {
                             // Ignore whitespace
                         },
