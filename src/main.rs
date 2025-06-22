@@ -14,7 +14,7 @@ fn main()  {
     let filename = &args[2];
 
     let mut is_error =  false;
-
+    let mut line: u64 = 1;
     match command.as_str() {
         "tokenize" => {
             // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -25,7 +25,6 @@ fn main()  {
             });
 
             if !file_contents.is_empty() {
-
                 let mut chars = file_contents.chars().peekable();
                 while let Some(char) = chars.next() {
                     match char {
@@ -43,6 +42,7 @@ fn main()  {
                                 chars.next(); // Consume the second slash
                                 while let Some(c) = chars.next()  {
                                     if c == '\n' {
+                                        line += 1;
                                         break; // Stop at the end of the line
                                     }
                                 }
@@ -83,11 +83,12 @@ fn main()  {
                                 println!("LESS < null");
                             }
                         },
-                        '\t' | '\n' | ' ' | '\r' => {
+                        '\t' | ' ' | '\r' => {
                             // Ignore whitespace
                         },
+                        '\n' => line += 1,
                         unknow => {
-                            eprintln!("[line 1] Error: Unexpected character: {}", unknow);
+                            eprintln!("[line {}] Error: Unexpected character: {}",line ,unknow);
                             is_error = true;
                         },
                     }
