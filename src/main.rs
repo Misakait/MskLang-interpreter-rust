@@ -95,6 +95,7 @@ fn main()  {
                             }
                             if !is_close{
                                 eprintln!("[line {}] Error: Unterminated string.",line);
+                                is_error = true;
                             }else {
                                 println!("STRING \"{}\" {}",string_literal, string_literal);
                             }
