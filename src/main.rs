@@ -22,12 +22,12 @@ fn main() {
                 String::new()
             });
 
-            // Uncomment this block to pass the first stage
-            // if !file_contents.is_empty() {
-            //     panic!("Scanner not implemented");
-            // } else {
-            //     println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
-            // }
+            Uncomment this block to pass the first stage
+            if !file_contents.is_empty() {
+                 panic!("Scanner not implemented");
+            } else {
+                println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
+            }
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
