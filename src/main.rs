@@ -24,15 +24,13 @@ fn main() {
 
           
             if !file_contents.is_empty() {
-                 panic!("Scanner not implemented");
-            } else {
                 file_contents.chars().for_each(|c| match c {
                     '(' => println!("LEFT_PAREN ( null"),
                     ')' => println!("RIGHT_PAREN ) null"),
                     _ => println!("Unknown token"),
                 });
-                println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
             }
+            println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
