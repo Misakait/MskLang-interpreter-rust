@@ -40,7 +40,13 @@ fn main()  {
                         ',' => println!("COMMA , null"),
                         '+' => println!("PLUS + null"),
                         '-' => println!("MINUS - null"),
-                        '/' => println!("SLASH // null"),
+                        '/' => {
+                            if chars.peek() == Some(&'/') {
+                                chars.next();
+                            } else {
+                                println!("SLASH / null");
+                            }
+                        },
                         ';' => println!("SEMICOLON ; null"),
                         '=' => {
                             if chars.peek() == Some(&'=') {
