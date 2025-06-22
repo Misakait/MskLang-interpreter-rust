@@ -50,6 +50,14 @@ fn main()  {
                                 println!("EQUAL = null");
                             }
                         },
+                        '!' => {
+                            if chars.peek() == Some(&'=') {
+                                chars.next();
+                                println!("BANG_EQUAL != null");
+                            } else {
+                                println!("BANG ! null");
+                            }
+                        },
                         unknow => {
                             eprintln!("[line 1] Error: Unexpected character: {}", unknow);
                             is_error = true;
