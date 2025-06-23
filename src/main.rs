@@ -36,14 +36,7 @@ fn main() {
         had_error = true;
         "".to_string()
     });
-
-    // 如果文件内容为空，则直接返回。
-    if file_contents.is_empty() {
-        return;
-    }
-
     
-
     // 根据命令执行不同的操作。
     match command.as_str() {
         "tokenize" => {
