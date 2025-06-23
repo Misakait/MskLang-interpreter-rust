@@ -117,8 +117,18 @@ fn main()  {
                             } else {
                                 format!("{}", number)
                             };
-
                             println!("NUMBER {} {}", number_str, number_literal);
+                        },
+                        'a'..='z' | 'A'..='Z' | '_' => {
+                            let mut identifier = char.to_string();
+                            while let Some(&next_char) = chars.peek() {
+                                if next_char.is_alphanumeric() || next_char == '_' {
+                                    identifier.push(chars.next().unwrap());
+                                } else {
+                                    break;
+                                }
+                            }
+                            println!("IDENTIFIER {} null", identifier);
                         },
                         '\t' | ' ' | '\r' => {
                             // Ignore whitespace
