@@ -102,8 +102,8 @@ impl<'a> Scanner<'a> {
             c if c.is_ascii_alphabetic() || c == '_' => self.identifier(c),
 
             // 未知字符
-            _ => {
-                eprintln!("[line {}] Error: Unexpected character.", self.line);
+            c => {
+                eprintln!("[line {}] Error: Unexpected character: {}", self.line, c);
                 self.had_error = true;
             }
         }
