@@ -52,10 +52,8 @@ fn main() {
             let (tokens, error) = scanner.scan_tokens();
             had_error = error;
             // 遍历并打印每个 Token。
-            if !had_error {
-                for token in tokens {
-                    println!("{}", token);
-                }
+            for token in tokens {
+                println!("{}", token);
             }
         }
         "parse" => {
