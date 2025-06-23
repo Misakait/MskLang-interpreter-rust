@@ -51,9 +51,16 @@ pub enum Literal {
 
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let token_type = format!("{:?}", self.token_type).to_uppercase();
+        let token_type_str = format!("{:?}", self.token_type).to_uppercase();
+        let token_type: String = match token_type_str.as_str() {
+            "LEFTPAREN" => "LEFT_PAREN".to_string(),
+            "RIGHTPAREN" => "RIGHT_PAREN".to_string(),
+            "LEFTBRACE" => "LEFT_BRACE".to_string(),
+            "RIGHTBRACE" => "RIGHT_BRACE".to_string(),
+            s => s.to_string(),
+        };
         let lexeme = &self.lexeme;
-        let literal  = match &self.literal {
+        let literal = match &self.literal {
             Some(Literal::Number(n)) => {
                 if n.fract() == 0.0 {
                     format!("{0:.1}", n)
