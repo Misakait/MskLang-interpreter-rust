@@ -100,6 +100,24 @@ fn main()  {
                                 println!("STRING \"{}\" {}",string_literal, string_literal);
                             }
                         },
+                        '0'..='9' => {
+                            let mut number_str = char.to_string();
+                            while let Some(&next_char) = chars.peek() {
+                                if next_char.is_digit(10) {
+                                    number_str.push(chars.next().unwrap());
+                                }else {
+                                    break;
+                                }
+                            }
+                            let number = number_str.parse::<f64>().unwrap_or(0.0);
+                            let number_literal = if number.fract() == 0.0 {
+                                format!("{0:.1}", number)
+                            } else {
+                                format!("{}", number)
+                            };
+
+                            println!("NUMBER {} {}", number_str, number_literal);
+                        },
                         '\t' | ' ' | '\r' => {
                             // Ignore whitespace
                         },
