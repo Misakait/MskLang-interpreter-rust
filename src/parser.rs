@@ -1,7 +1,7 @@
 //! parser.rs - 负责解析由 Scanner 生成的 Token 序列。
 //! 这是解释器的语法分析阶段。
 
-use crate::token::{Token, TokenType};
+use crate::token::{Literal, Token, TokenType};
 
 /// Parser 结构体接收一个 Token 序列，并根据 Lox 语言的语法规则进行解析。
 pub struct Parser {
@@ -29,6 +29,16 @@ impl Parser {
                 TokenType::True => println!("true"),
                 TokenType::False => println!("false"),
                 TokenType::Nil => println!("nil"),
+                TokenType::Number => {
+                   if let Some(Literal::Number(num)) = &token.literal{
+                       let value = if num.fract() == 0.0 {
+                           format!("{0:.1}", num)
+                       } else {
+                           format!("{}", num)
+                       };
+                       println!("{}", value);
+                   }
+                }
                 // 忽略所有其他 Token。
                 _ => ()
             }
