@@ -26,14 +26,15 @@ fn main() {
         writeln!(io::stderr(), "Usage: {} <command> <filename>", args[0]).unwrap();
         return;
     }
-
+    
     let command = &args[1];
     let filename = &args[2];
-
+    let mut had_error = false;
     // 读取指定文件的内容。
     let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
         writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
-        String::new()
+        had_error = true;
+        "".to_string()
     });
 
     // 如果文件内容为空，则直接返回。
@@ -41,7 +42,7 @@ fn main() {
         return;
     }
 
-    let mut had_error = false;
+    
 
     // 根据命令执行不同的操作。
     match command.as_str() {
