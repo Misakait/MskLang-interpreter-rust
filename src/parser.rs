@@ -43,8 +43,23 @@ impl Parser {
     }
 
     /// 解析一个表达式。这是解析的入口。
-    /// expression -> primary
+    /// expression -> unary
     fn expression(&mut self) -> Expr {
+        self.unary()
+    }
+
+    /// 解析一元表达式。
+    /// unary -> ( "!" | "-" ) unary | primary
+    fn unary(&mut self) -> Expr {
+        if self.match_token(&[TokenType::Bang, TokenType::Minus]) {
+            let operator = self.previous().clone();
+            let right = self.unary();
+            return Expr::Unary {
+                operator,
+                right: Box::new(right),
+            };
+        }
+
         self.primary()
     }
 

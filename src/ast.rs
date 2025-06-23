@@ -6,6 +6,11 @@ use crate::token::{Literal, Token};
 /// Expr 枚举代表了 Lox 语言中所有可能的表达式。
 /// 使用 Box<Expr> 来处理递归的枚举类型，避免无限大小的问题。
 pub enum Expr {
+    /// 一元运算表达式，例如 `-5` 或 `!true`
+    Unary {
+        operator: Token,
+        right: Box<Expr>,
+    },
     /// 分组表达式，例如 `( ... )`
     Grouping {
         expression: Box<Expr>,
@@ -18,9 +23,12 @@ pub enum Expr {
 
 impl Expr {
     /// 将 AST 节点转换为 S-expression 字符串，用于调试和测试。
-    /// 例如，一个 Grouping 节点会变成 `(group ...)`。
+    /// 例如，一个 Unary 节点会变成 `(! true)`。
     pub fn to_string_sexpr(&self) -> String {
         match self {
+            Expr::Unary { operator, right } => {
+                format!("({} {})", operator.lexeme, right.to_string_sexpr())
+            }
             Expr::Grouping { expression } => {
                 format!("(group {})", expression.to_string_sexpr())
             }
@@ -44,4 +52,3 @@ impl Expr {
         }
     }
 }
-
