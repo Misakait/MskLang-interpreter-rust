@@ -5,19 +5,16 @@
 mod token;
 mod scanner;
 mod parser;
+mod ast;
 
-use std::env;
-// 用于处理命令行参数
-use std::fs;
-// 用于文件系统操作，如读取文件
-use std::io::{self, Write};
-// 用于 I/O 操作，特别是向 stderr 写入错误信息
-use std::process::exit;
-// 用于以特定的退出码终止程序
+use std::env; // 用于处理命令行参数
+use std::fs; // 用于文件系统操作，如读取文件
+use std::io::{self, Write}; // 用于 I/O 操作，特别是向 stderr 写入错误信息
+use std::process::exit; // 用于以特定的退出码终止程序
 
-use parser::Parser;
 // 从我们自己的模块中导入所需的结构体。
 use scanner::Scanner;
+use parser::Parser;
 
 /// 程序的主函数。
 fn main() {
@@ -29,44 +26,56 @@ fn main() {
         writeln!(io::stderr(), "Usage: {} <command> <filename>", args[0]).unwrap();
         return;
     }
-    
+
     let command = &args[1];
     let filename = &args[2];
 
-    let mut is_error = false;
     // 读取指定文件的内容。
     let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
         writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
-        is_error = true;
-        "".to_string()
+        String::new()
     });
 
     // 如果文件内容为空，则直接返回。
-    // if file_contents.is_empty() {
-    //     return;
-    // }
-    
+    if file_contents.is_empty() {
+        return;
+    }
+
+    let mut had_error = false;
+
     // 根据命令执行不同的操作。
     match command.as_str() {
         "tokenize" => {
             // 创建一个新的 Scanner 实例。
             let scanner = Scanner::new(&file_contents);
             // 扫描文件内容以生成 Token。
-            let (tokens, had_error) = scanner.scan_tokens();
-            is_error = had_error; // 更新 had_error 状态
+            let (tokens, error) = scanner.scan_tokens();
+            had_error = error;
             // 遍历并打印每个 Token。
-            for token in tokens {
-                println!("{}", token);
+            if !had_error {
+                for token in tokens {
+                    println!("{}", token);
+                }
             }
         }
         "parse" => {
-            // 创建 Scanner 并生成 Token。
+            // 1. 扫描阶段
             let scanner = Scanner::new(&file_contents);
-            let (tokens, _) = scanner.scan_tokens(); // 克隆 Token 以便传递给 Parser
-            // 创建一个新的 Parser 实例。
+            let (tokens, had_scanner_error) = scanner.scan_tokens();
+
+            // 2. 解析阶段
             let mut parser = Parser::new(tokens);
-            // 开始解析过程。
-            parser.parse();
+            let (expr_option, had_parser_error) = parser.parse();
+
+            // 检查在任何阶段是否发生了错误
+            had_error = had_scanner_error || had_parser_error;
+
+            // 如果没有错误并且成功生成了 AST，则打印它
+            if !had_error {
+                if let Some(expr) = expr_option {
+                    println!("{}", expr.to_string_sexpr());
+                }
+            }
         }
         _ => {
             // 如果命令未知，则报告错误并以非零状态码退出。
@@ -74,8 +83,9 @@ fn main() {
             exit(65);
         }
     }
-    if is_error {
-        // 如果在扫描过程中发生了错误，则以非零状态码退出。
+
+    // 如果在任何阶段遇到了错误，则以状态码 65 退出。
+    if had_error {
         exit(65);
     }
 }
