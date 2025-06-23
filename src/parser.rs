@@ -39,6 +39,11 @@ impl Parser {
                        println!("{}", value);
                    }
                 }
+                TokenType::String => {
+                    if let Some(Literal::String(s)) = &token.literal {
+                        println!("{}", s);
+                    }
+                }
                 // 忽略所有其他 Token。
                 _ => ()
             }
