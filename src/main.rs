@@ -105,6 +105,8 @@ fn main()  {
                             while let Some(&next_char) = chars.peek() {
                                 if next_char.is_digit(10) {
                                     number_str.push(chars.next().unwrap());
+                                }else if next_char == '.' {
+                                    number_str.push(chars.next().unwrap());
                                 }else {
                                     break;
                                 }
