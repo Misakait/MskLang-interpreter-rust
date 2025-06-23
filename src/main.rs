@@ -6,15 +6,18 @@ mod token;
 mod scanner;
 mod parser;
 
-use std::env; // 用于处理命令行参数
-use std::fs; // 用于文件系统操作，如读取文件
-use std::io::{self, Write}; // 用于 I/O 操作，特别是向 stderr 写入错误信息
-use std::process::exit; // 用于以特定的退出码终止程序
+use std::env;
+// 用于处理命令行参数
+use std::fs;
+// 用于文件系统操作，如读取文件
+use std::io::{self, Write};
+// 用于 I/O 操作，特别是向 stderr 写入错误信息
+use std::process::exit;
+// 用于以特定的退出码终止程序
 
+use parser::Parser;
 // 从我们自己的模块中导入所需的结构体。
 use scanner::Scanner;
-use parser::Parser;
-use crate::token::Literal;
 
 /// 程序的主函数。
 fn main() {
@@ -45,7 +48,7 @@ fn main() {
     match command.as_str() {
         "tokenize" => {
             // 创建一个新的 Scanner 实例。
-            let mut scanner = Scanner::new(file_contents);
+            let scanner = Scanner::new(&file_contents);
             // 扫描文件内容以生成 Token。
             let tokens = scanner.scan_tokens();
             // 遍历并打印每个 Token。
@@ -55,8 +58,8 @@ fn main() {
         }
         "parse" => {
             // 创建 Scanner 并生成 Token。
-            let mut scanner = Scanner::new(file_contents);
-            let tokens = scanner.scan_tokens().to_vec(); // 克隆 Token 以便传递给 Parser
+            let scanner = Scanner::new(&file_contents);
+            let tokens = scanner.scan_tokens(); // 克隆 Token 以便传递给 Parser
             // 创建一个新的 Parser 实例。
             let mut parser = Parser::new(tokens);
             // 开始解析过程。
@@ -65,7 +68,7 @@ fn main() {
         _ => {
             // 如果命令未知，则报告错误并以非零状态码退出。
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            exit(1);
+            exit(65);
         }
     }
 }

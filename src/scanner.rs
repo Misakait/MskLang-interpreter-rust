@@ -2,203 +2,203 @@
 //! 这是解释器的词法分析阶段。
 
 use crate::token::{Literal, Token, TokenType};
+use std::iter::Peekable;
+use std::str::Chars;
 
 /// Scanner 结构体持有扫描过程中的所有状态。
-pub struct Scanner {
-    /// 完整的源代码字符串。
-    source: String,
+/// 它使用一个可预读的迭代器来处理源字符串，以获得高效的性能。
+pub struct Scanner<'a> {
+    /// 一个可预读的字符迭代器，用于查看下一个字符而不消耗它。
+    chars: Peekable<Chars<'a>>,
     /// 已扫描生成的 Token 列表。
     tokens: Vec<Token>,
-    /// 当前正在扫描的词素的起始位置。
-    start: usize,
-    /// 指向源代码中当前正在处理的字符的位置。
-    current: usize,
     /// 当前所在的行号，用于错误报告。
     line: usize,
 }
 
-impl Scanner {
+impl<'a> Scanner<'a> {
     /// 创建一个新的 Scanner 实例。
-    pub fn new(source: String) -> Self {
+    /// 它接收对源字符串的引用，并创建一个内部迭代器。
+    pub fn new(source: &'a str) -> Self {
         Scanner {
-            source,
+            chars: source.chars().peekable(),
             tokens: Vec::new(),
-            start: 0,
-            current: 0,
             line: 1,
         }
     }
 
-    /// 扫描整个源代码，并返回生成的 Token 列表的引用。
-    pub fn scan_tokens(&mut self) -> &Vec<Token> {
-        while !self.is_at_end() {
-            // 在每个新 Token 的开始，我们将 start 和 current 同步。
-            self.start = self.current;
-            self.scan_token();
+    /// 扫描整个源代码，并返回生成的 Token 列表。
+    /// 此方法会消耗 Scanner 实例。
+    pub fn scan_tokens(mut self) -> Vec<Token> {
+        // 主扫描循环，只要还有字符就继续。
+        while let Some(c) = self.advance() {
+            self.scan_token(c);
         }
 
         // 扫描结束后，添加一个文件结束符（Eof）Token。
-        // 这使得语法分析器可以知道什么时候到达了 Token 序列的末尾。
         self.tokens.push(Token::new(TokenType::Eof, "".to_string(), None, self.line));
-        &self.tokens
+        self.tokens
     }
 
-    /// 检查是否已经处理完所有字符。
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.len()
-    }
-
-    /// 扫描并处理单个 Token。
-    fn scan_token(&mut self) {
-        let c = self.advance();
+    /// 根据当前字符扫描并处理单个 Token。
+    fn scan_token(&mut self, c: char) {
         match c {
-            '(' => self.add_token(TokenType::LeftParen),
-            ')' => self.add_token(TokenType::RightParen),
-            '{' => self.add_token(TokenType::LeftBrace),
-            '}' => self.add_token(TokenType::RightBrace),
-            ',' => self.add_token(TokenType::Comma),
-            '.' => self.add_token(TokenType::Dot),
-            '-' => self.add_token(TokenType::Minus),
-            '+' => self.add_token(TokenType::Plus),
-            ';' => self.add_token(TokenType::Semicolon),
-            '*' => self.add_token(TokenType::Star),
+            '(' => self.add_chars_token(TokenType::LeftParen, "("),
+            ')' => self.add_chars_token(TokenType::RightParen, ")"),
+            '{' => self.add_chars_token(TokenType::LeftBrace, "{"),
+            '}' => self.add_chars_token(TokenType::RightBrace, "}"),
+            ',' => self.add_chars_token(TokenType::Comma, ","),
+            '.' => self.add_chars_token(TokenType::Dot, "."),
+            '-' => self.add_chars_token(TokenType::Minus, "-"),
+            '+' => self.add_chars_token(TokenType::Plus, "+"),
+            ';' => self.add_chars_token(TokenType::Semicolon, ";"),
+            '*' => self.add_chars_token(TokenType::Star, "*"),
+
+            // 处理可能为双字符的 Token
             '!' => {
-                let token_type = if self.match_char('=') { TokenType::BangEqual } else { TokenType::Bang };
-                self.add_token(token_type);
-            }
+                let (ty, lexeme) = if self.match_char('=') { (TokenType::BangEqual, "!=") } else { (TokenType::Bang, "!") };
+                self.add_chars_token(ty, lexeme);
+            },
             '=' => {
-                let token_type = if self.match_char('=') { TokenType::EqualEqual } else { TokenType::Equal };
-                self.add_token(token_type);
-            }
+                let (ty, lexeme) = if self.match_char('=') { (TokenType::EqualEqual, "==") } else { (TokenType::Equal, "=") };
+                self.add_chars_token(ty, lexeme);
+            },
             '<' => {
-                let token_type = if self.match_char('=') { TokenType::LessEqual } else { TokenType::Less };
-                self.add_token(token_type);
-            }
+                let (ty, lexeme) = if self.match_char('=') { (TokenType::LessEqual, "<=") } else { (TokenType::Less, "<") };
+                self.add_chars_token(ty, lexeme);
+            },
             '>' => {
-                let token_type = if self.match_char('=') { TokenType::GreaterEqual } else { TokenType::Greater };
-                self.add_token(token_type);
-            }
+                let (ty, lexeme) = if self.match_char('=') { (TokenType::GreaterEqual, ">=") } else { (TokenType::Greater, ">") };
+                self.add_chars_token(ty, lexeme);
+            },
+
             '/' => {
                 if self.match_char('/') {
-                    // A comment goes until the end of the line.
-                    while self.peek() != '\n' && !self.is_at_end() {
+                    // 注释会一直持续到行尾，我们直接忽略它。
+                    while let Some(pc) = self.peek() {
+                        if pc == '\n' { break; }
                         self.advance();
                     }
                 } else {
-                    self.add_token(TokenType::Slash);
+                    self.add_chars_token(TokenType::Slash, "/");
                 }
             }
-            ' ' | '\r' | '\t' => { /* Ignore whitespace. */ }
+
+            // 忽略空白字符
+            ' ' | '\r' | '\t' => (),
+
+            // 换行符，增加行号
             '\n' => self.line += 1,
+
+            // 字符串字面量
             '"' => self.string(),
+
+            // 数字字面量
+            c if c.is_ascii_digit() => self.number(c),
+            // 标识符或关键字
+            c if c.is_ascii_alphabetic() || c == '_' => self.identifier(c),
+
+            // 未知字符
             _ => {
-                if c.is_ascii_digit() {
-                    self.number();
-                } else if c.is_ascii_alphabetic() || c == '_' {
-                    self.identifier();
-                } else {
-                    // For now, we'll just print an error. A more robust solution is needed.
-                    eprintln!("[line {}] Error: Unexpected character.", self.line);
-                }
+                eprintln!("[line {}] Error: Unexpected character.", self.line);
             }
         }
     }
 
-    /// 消费当前字符并向前移动一个位置，返回被消费的字符。
-    fn advance(&mut self) -> char {
-        self.current += 1;
-        self.source.chars().nth(self.current - 1).unwrap()
+    /// 消费迭代器中的下一个字符并返回它。
+    fn advance(&mut self) -> Option<char> {
+        self.chars.next()
     }
 
-    /// 添加一个没有字面量的新 Token。
-    fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_literal(token_type, None);
+    /// 查看迭代器中的下一个字符，但不消耗它。
+    fn peek(&mut self) -> Option<char> {
+        self.chars.peek().cloned()
     }
 
-    /// 根据给定的类型和字面量创建一个新的 Token，并将其添加到列表中。
-    fn add_token_literal(&mut self, token_type: TokenType, literal: Option<Literal>) {
-        let text = &self.source[self.start..self.current];
-        self.tokens.push(Token::new(token_type, text.to_string(), literal, self.line));
-    }
-
-    /// 检查当前字符是否与预期字符匹配。如果匹配，则消费该字符并返回 true。
+    /// 如果下一个字符与 `expected` 匹配，则消耗它并返回 `true`。
     fn match_char(&mut self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
+        if self.peek() == Some(expected) {
+            self.advance();
+            true
+        } else {
+            false
         }
-        if self.source.chars().nth(self.current).unwrap() != expected {
-            return false;
-        }
-        self.current += 1;
-        true
     }
 
-    /// 查看当前字符，但不消费它（“预读”）。
-    fn peek(&self) -> char {
-        if self.is_at_end() {
-            return '\0';
-        }
-        self.source.chars().nth(self.current).unwrap()
+    /// 添加一个简单的单字符（或双字符）Token。
+    fn add_chars_token(&mut self, token_type: TokenType, lexeme: &str) {
+        self.tokens.push(Token::new(token_type, lexeme.to_string(), None, self.line));
+    }
+
+    /// 添加一个带有字面量值的 Token。
+    fn add_literal_token(&mut self, token_type: TokenType, lexeme: String, literal: Option<Literal>) {
+        self.tokens.push(Token::new(token_type, lexeme, literal, self.line));
     }
 
     /// 处理字符串字面量。
     fn string(&mut self) {
-        while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
-                self.line += 1;
-            }
-            self.advance();
+        let mut value = String::new();
+        while let Some(c) = self.peek() {
+            if c == '"' { break; }
+            if c == '\n' { self.line += 1; }
+            value.push(self.advance().unwrap());
         }
 
-        if self.is_at_end() {
+        if self.peek().is_none() {
             eprintln!("[line {}] Error: Unterminated string.", self.line);
             return;
         }
 
-        // The closing ".
+        // 消耗结尾的 "
         self.advance();
 
-        // Trim the surrounding quotes.
-        let value = self.source[self.start + 1..self.current - 1].to_string();
-        self.add_token_literal(TokenType::String, Some(Literal::String(value)));
+        // 完整的词素包括引号
+        let lexeme = format!("\"{}\"", value);
+        self.add_literal_token(TokenType::String, lexeme, Some(Literal::String(value)));
     }
 
     /// 处理数字字面量。
-    fn number(&mut self) {
-        while self.peek().is_ascii_digit() {
-            self.advance();
+    fn number(&mut self, first_char: char) {
+        let mut lexeme = String::new();
+        lexeme.push(first_char);
+
+        while let Some(c) = self.peek() {
+            if !c.is_ascii_digit() { break; }
+            lexeme.push(self.advance().unwrap());
         }
 
-        // Look for a fractional part.
-        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
-            // Consume the "."
-            self.advance();
-
-            while self.peek().is_ascii_digit() {
-                self.advance();
+        if self.peek() == Some('.') {
+            let mut ahead = self.chars.clone();
+            ahead.next(); // 跳过 '.'
+            if let Some(next_char) = ahead.peek() {
+                if next_char.is_ascii_digit() {
+                    lexeme.push(self.advance().unwrap()); // 消耗 '.'
+                    while let Some(c) = self.peek() {
+                        if !c.is_ascii_digit() { break; }
+                        lexeme.push(self.advance().unwrap());
+                    }
+                }
             }
         }
 
-        let value: f64 = self.source[self.start..self.current].parse().unwrap();
-        self.add_token_literal(TokenType::Number, Some(Literal::Number(value)));
-    }
-
-    /// 查看当前字符的下一个字符，但不消费它。
-    fn peek_next(&self) -> char {
-        if self.current + 1 >= self.source.len() {
-            return '\0';
-        }
-        self.source.chars().nth(self.current + 1).unwrap()
+        let value: f64 = lexeme.parse().unwrap();
+        self.add_literal_token(TokenType::Number, lexeme, Some(Literal::Number(value)));
     }
 
     /// 处理标识符和关键字。
-    fn identifier(&mut self) {
-        while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
-            self.advance();
+    fn identifier(&mut self, first_char: char) {
+        let mut lexeme = String::new();
+        lexeme.push(first_char);
+
+        while let Some(c) = self.peek() {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                lexeme.push(self.advance().unwrap());
+            } else {
+                break;
+            }
         }
 
-        let text = &self.source[self.start..self.current];
-        let token_type = match text {
+        let token_type = match lexeme.as_str() {
             "and" => TokenType::And,
             "class" => TokenType::Class,
             "else" => TokenType::Else,
@@ -217,6 +217,6 @@ impl Scanner {
             "while" => TokenType::While,
             _ => TokenType::Identifier,
         };
-        self.add_token(token_type);
+        self.add_chars_token(token_type, &lexeme);
     }
 }
