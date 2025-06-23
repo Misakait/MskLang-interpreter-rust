@@ -43,14 +43,15 @@ fn main() {
     if file_contents.is_empty() {
         return;
     }
-
+    let mut is_error = false;
     // 根据命令执行不同的操作。
     match command.as_str() {
         "tokenize" => {
             // 创建一个新的 Scanner 实例。
             let scanner = Scanner::new(&file_contents);
             // 扫描文件内容以生成 Token。
-            let tokens = scanner.scan_tokens();
+            let (tokens, had_error) = scanner.scan_tokens();
+            is_error = had_error; // 更新 had_error 状态
             // 遍历并打印每个 Token。
             for token in tokens {
                 println!("{}", token);
@@ -59,7 +60,7 @@ fn main() {
         "parse" => {
             // 创建 Scanner 并生成 Token。
             let scanner = Scanner::new(&file_contents);
-            let tokens = scanner.scan_tokens(); // 克隆 Token 以便传递给 Parser
+            let (tokens, _) = scanner.scan_tokens(); // 克隆 Token 以便传递给 Parser
             // 创建一个新的 Parser 实例。
             let mut parser = Parser::new(tokens);
             // 开始解析过程。
@@ -70,5 +71,9 @@ fn main() {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
             exit(65);
         }
+    }
+    if is_error {
+        // 如果在扫描过程中发生了错误，则以非零状态码退出。
+        exit(65);
     }
 }

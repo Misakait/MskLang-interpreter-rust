@@ -14,6 +14,8 @@ pub struct Scanner<'a> {
     tokens: Vec<Token>,
     /// 当前所在的行号，用于错误报告。
     line: usize,
+    /// 记录在扫描过程中是否遇到了错误。
+    had_error: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -24,12 +26,13 @@ impl<'a> Scanner<'a> {
             chars: source.chars().peekable(),
             tokens: Vec::new(),
             line: 1,
+            had_error: false,
         }
     }
 
-    /// 扫描整个源代码，并返回生成的 Token 列表。
+    /// 扫描整个源代码，并返回生成的 Token 列表以及是否发生错误的标志。
     /// 此方法会消耗 Scanner 实例。
-    pub fn scan_tokens(mut self) -> Vec<Token> {
+    pub fn scan_tokens(mut self) -> (Vec<Token>, bool) {
         // 主扫描循环，只要还有字符就继续。
         while let Some(c) = self.advance() {
             self.scan_token(c);
@@ -37,7 +40,7 @@ impl<'a> Scanner<'a> {
 
         // 扫描结束后，添加一个文件结束符（Eof）Token。
         self.tokens.push(Token::new(TokenType::Eof, "".to_string(), None, self.line));
-        self.tokens
+        (self.tokens, self.had_error)
     }
 
     /// 根据当前字符扫描并处理单个 Token。
@@ -101,6 +104,7 @@ impl<'a> Scanner<'a> {
             // 未知字符
             _ => {
                 eprintln!("[line {}] Error: Unexpected character.", self.line);
+                self.had_error = true;
             }
         }
     }
@@ -146,6 +150,7 @@ impl<'a> Scanner<'a> {
 
         if self.peek().is_none() {
             eprintln!("[line {}] Error: Unterminated string.", self.line);
+            self.had_error = true;
             return;
         }
 
