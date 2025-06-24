@@ -50,10 +50,8 @@ impl Parser {
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
         if self.match_token(&[
-            TokenType::Greater,
-            TokenType::GreaterEqual,
-            TokenType::Less,
-            TokenType::LessEqual,
+            TokenType::EqualEqual,
+            TokenType::BangEqual,
         ]) {
             let operator = self.previous().clone();
             let right = self.comparison();
