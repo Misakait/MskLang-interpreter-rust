@@ -47,7 +47,24 @@ impl Parser {
     fn expression(&mut self) -> Expr {
         self.term()
     }
-    
+    fn comparison(&mut self) -> Expr {
+        let mut expr = self.term();
+        if self.match_token(&[
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+        ]) {
+            let operator = self.previous().clone();
+            let right = self.term();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+        expr
+    }
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
 
