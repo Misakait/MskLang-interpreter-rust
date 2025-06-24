@@ -36,7 +36,6 @@ fn main() {
         had_error = true;
         "".to_string()
     });
-    
     // 根据命令执行不同的操作。
     match command.as_str() {
         "tokenize" => {
