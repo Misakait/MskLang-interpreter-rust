@@ -45,9 +45,26 @@ impl Parser {
     /// 解析一个表达式。这是解析的入口。
     /// expression -> unary
     fn expression(&mut self) -> Expr {
-        self.term()
+        self.comparison()
     }
-    
+    fn comparison(&mut self) -> Expr {
+        let mut expr = self.term();
+        if self.match_token(&[
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+        ]) {
+            let operator = self.previous().clone();
+            let right = self.term();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+        expr
+    }
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
 
