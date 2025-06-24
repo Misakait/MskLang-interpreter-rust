@@ -45,7 +45,23 @@ impl Parser {
     /// 解析一个表达式。这是解析的入口。
     /// expression -> unary
     fn expression(&mut self) -> Expr {
-        self.unary()
+        self.factor()
+    }
+
+    fn factor(&mut self) -> Expr {
+        let mut expr = self.unary();
+
+        while self.match_token(&[TokenType::Slash, TokenType::Star]) {
+            let operator = self.previous().clone();
+            let right = self.unary();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        expr
     }
 
     /// 解析一元表达式。
@@ -59,24 +75,25 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-
+        // 如果不是一元运算符，则继续解析主表达式。
         self.primary()
     }
 
     /// 解析一个主表达式。
     /// primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
     fn primary(&mut self) -> Expr {
+
         if self.match_token(&[
             TokenType::False,
             TokenType::True,
             TokenType::Nil,
-            TokenType::Number,
             TokenType::String,
         ]) {
             return Expr::Literal {
                 value: self.previous().clone(),
             };
         }
+
 
         if self.match_token(&[TokenType::LeftParen]) {
             let expr = self.expression();

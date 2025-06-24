@@ -11,6 +11,11 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Binary {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    },
     /// 分组表达式，例如 `( ... )`
     Grouping {
         expression: Box<Expr>,
@@ -31,6 +36,13 @@ impl Expr {
             }
             Expr::Grouping { expression } => {
                 format!("(group {})", expression.to_string_sexpr())
+            }
+            Expr::Binary { left, operator, right } => {
+                format!(
+                    "({} {} {})",
+                    operator.lexeme,
+                    left.to_string_sexpr(),
+                    right.to_string_sexpr())
             }
             Expr::Literal { value } => {
                 if let Some(literal) = &value.literal {
