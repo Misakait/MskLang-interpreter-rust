@@ -49,7 +49,7 @@ impl Parser {
     }
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
-        if self.match_token(&[
+        while self.match_token(&[
             TokenType::Greater,
             TokenType::GreaterEqual,
             TokenType::Less,
