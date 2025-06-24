@@ -27,7 +27,7 @@ impl Interpreter {
             Expr::Grouping { expression } => self.interpret(*expression),
             Expr::Literal { value } => {
                 match value.token_type {
-                    TokenType::String => Ok(MskValue::String(value.lexeme)),
+                    TokenType::String => Ok(MskValue::String(value.literal.unwrap().to_string())),
                     TokenType::Number => {
                         match value.literal.unwrap() {
                             Literal::Number(n) => Ok(MskValue::Float(n)),

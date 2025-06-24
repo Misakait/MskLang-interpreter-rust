@@ -48,7 +48,15 @@ pub enum Literal {
     String(String),
     Number(f64),
 }
-
+impl Literal {
+    /// 获取字面量的字符串表示。
+    pub fn to_string(&self) -> String {
+        match self {
+            Literal::String(s) => s.clone(),
+            Literal::Number(n) => n.to_string(),
+        }
+    }
+}
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let token_type_str = format!("{:?}", self.token_type).to_uppercase();
