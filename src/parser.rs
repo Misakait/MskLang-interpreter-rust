@@ -1,6 +1,7 @@
 //! parser.rs - 负责解析由 Scanner 生成的 Token 序列，并构建抽象语法树（AST）。
 //! 这是解释器的语法分析阶段。
 
+use std::cell::Cell;
 use crate::ast::Expr;
 use crate::token::{Token, TokenType};
 
@@ -11,7 +12,7 @@ pub struct Parser {
     /// 指向当前正在处理的 Token 的位置。
     current: usize,
     /// 记录在解析过程中是否遇到了错误。
-    had_error: bool,
+    had_error: Cell<bool>,
 }
 
 impl Parser {
@@ -20,7 +21,7 @@ impl Parser {
         Parser {
             tokens,
             current: 0,
-            had_error: false,
+            had_error: Cell::new(false),
         }
     }
 
@@ -29,13 +30,13 @@ impl Parser {
     /// 同时返回一个布尔值，表示在解析过程中是否发生了错误。
     pub fn parse(&mut self) -> (Option<Expr>, bool) {
         if self.peek().token_type == TokenType::Eof {
-            return (None, self.had_error);
+            return (None, self.had_error.get());
         }
         let expr = self.expression();
         if !self.is_at_end() {
             // self.error(self.peek(), "Expect end of expression.");
         }
-        if self.had_error {
+        if self.had_error.get() {
             (None, true)
         } else {
             (Some(expr), false)
@@ -147,7 +148,7 @@ impl Parser {
 
         if self.match_token(&[TokenType::LeftParen]) {
             let expr = self.expression();
-            self.consume(TokenType::RightParen, "Expect ')' after expression.");
+            self.consume(TokenType::RightParen, "Expect expression.");
             return Expr::Grouping {
                 expression: Box::new(expr),
             };
@@ -174,7 +175,8 @@ impl Parser {
         if self.check(&token_type) {
             return self.advance();
         }
-        // self.error(self.peek(), message);
+        self.error(self.peek(), message);
+        // 返回原始的 peek 结果，因为函数签名要求返回一个引用。
         self.peek()
     }
 
@@ -210,7 +212,7 @@ impl Parser {
     }
 
     /// 报告一个解析错误。
-    fn error(&mut self, token: &Token, message: &str) {
+    fn error(&self ,token: &Token, message: &str) {
         if token.token_type == TokenType::Eof {
             eprintln!("[line {}] Error at end: {}", token.line, message);
         } else {
@@ -219,6 +221,6 @@ impl Parser {
                 token.line, token.lexeme, message
             );
         }
-        self.had_error = true;
+        self.had_error.set(true);
     }
 }
