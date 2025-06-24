@@ -64,7 +64,7 @@ impl Parser {
         }
         expr
     }
-    
+
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
         while self.match_token(&[
@@ -153,7 +153,7 @@ impl Parser {
                 expression: Box::new(expr),
             };
         }
-        // self.error(self.peek(), "Expect expression.");
+        self.error(self.peek(), "Expect expression.");
         Expr::Literal {
             value: self.peek().clone(),
         }
