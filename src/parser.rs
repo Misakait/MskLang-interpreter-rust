@@ -45,7 +45,7 @@ impl Parser {
     /// 解析一个表达式。这是解析的入口。
     /// expression -> unary
     fn expression(&mut self) -> Expr {
-        self.comparison()
+        self.equality()
     }
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
