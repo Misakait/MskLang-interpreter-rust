@@ -46,20 +46,15 @@ impl Interpreter {
     }
     fn evaluate_binary(&self, operator: TokenType, left: MskValue, right: MskValue) -> Result<MskValue, String> {
         match operator {
-            TokenType::Plus => {
-                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
-                    Ok(MskValue::Float(l + r))
-                } else {
-                    Err("Operands must be numbers for '+' operator.".to_string())
-                }
-            }
-            TokenType::Minus => {
-                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
-                    Ok(MskValue::Float(l - r))
-                } else {
-                    Err("Operands must be numbers for '-' operator.".to_string())
-                }
-            }
+            TokenType::Plus => match (left, right) {
+                (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Float(l + r)),
+                (MskValue::String(l), MskValue::String(r)) => Ok(MskValue::String(format!("{}{}", l, r))),
+                _ => Err("Operands must be two numbers or two strings for '+' operator.".to_string()),
+            },
+            TokenType::Minus => match (left, right) {
+                (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Float(l - r)),
+                _ => Err("Operands must be numbers for '-' operator.".to_string()),
+            },
             TokenType::Star => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Float(l * r))
