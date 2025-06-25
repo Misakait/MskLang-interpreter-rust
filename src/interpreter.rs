@@ -17,7 +17,7 @@ impl Interpreter {
         match expr {
             Expr::Unary { operator, right } => {
                 let value = self.interpret(*right)?;
-                self.evaluate_unary(operator.token_type, value)
+                self.evaluate_unary(operator, value)
             }
             Expr::Binary { left, operator, right } => {
                 let left_value = self.interpret(*left)?;
@@ -122,13 +122,13 @@ impl Interpreter {
             _ => Err(format!("Unsupported binary operator: {:?}", operator)),
         }
     }
-    fn evaluate_unary(&self, operator: TokenType, value: MskValue) -> Result<MskValue, String> {
-        match operator {
+    fn evaluate_unary(&self, operator: Token, value: MskValue) -> Result<MskValue, String> {
+        match operator.token_type {
             TokenType::Minus => {
                 if let MskValue::Float(n) = value {
                     Ok(MskValue::Float(-n))
                 } else {
-                    Err("Operand must be a number for unary '-' operator.".to_string())
+                    Err(format!("Operand must be a number./n[line {}]", operator.line))
                 }
             }
             TokenType::Bang => {
