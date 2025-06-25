@@ -128,7 +128,7 @@ impl Interpreter {
                 if let MskValue::Float(n) = value {
                     Ok(MskValue::Float(-n))
                 } else {
-                    Err(format!("Operand must be a number./n[line {}]", operator.line))
+                    Err(format!("Operand must be a number.\n[line {}]", operator.line))
                 }
             }
             TokenType::Bang => {
