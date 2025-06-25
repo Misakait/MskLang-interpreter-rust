@@ -102,12 +102,22 @@ impl Interpreter {
                 }
             }
             TokenType::EqualEqual => {
-                let (l,r) = (left.is_true(),right.is_true());
-                Ok(MskValue::Boolean(l == r))
+                match (left,right) { 
+                    (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Boolean(l == r)),
+                    (MskValue::String(l), MskValue::String(r)) => Ok(MskValue::Boolean(l == r)),
+                    (MskValue::Boolean(l), MskValue::Boolean(r)) => Ok(MskValue::Boolean(l == r)),
+                    // (MskValue::Nil, MskValue::Nil) => Ok(MskValue::Boolean(true)),
+                    _ => Ok(MskValue::Boolean(false)), // 不同类型的比较返回 false
+                }
             }
             TokenType::BangEqual => {
-                let (l,r) = (left.is_true(),right.is_true());
-                Ok(MskValue::Boolean(l != r))
+                match (left,right) {
+                    (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Boolean(l != r)),
+                    (MskValue::String(l), MskValue::String(r)) => Ok(MskValue::Boolean(l != r)),
+                    (MskValue::Boolean(l), MskValue::Boolean(r)) => Ok(MskValue::Boolean(l != r)),
+                    // (MskValue::Nil, MskValue::Nil) => Ok(MskValue::Boolean(true)),
+                    _ => Ok(MskValue::Boolean(true)), 
+                }
             }
             _ => Err(format!("Unsupported binary operator: {:?}", operator)),
         }
