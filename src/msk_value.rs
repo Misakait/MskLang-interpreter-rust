@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use crate::token::Token;
 
 pub enum MskValue {
     // 一个浮点数值。

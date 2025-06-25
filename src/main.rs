@@ -6,7 +6,7 @@ mod token;
 mod scanner;
 mod parser;
 mod ast;
-mod MskValue;
+mod msk_value;
 mod interpreter;
 
 use std::env; // 用于处理命令行参数

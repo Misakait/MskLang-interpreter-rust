@@ -1,5 +1,5 @@
 use crate::ast::Expr;
-use crate::MskValue::MskValue;
+use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
 
 pub struct Interpreter {
