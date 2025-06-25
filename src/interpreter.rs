@@ -73,6 +73,42 @@ impl Interpreter {
                     Err("Operands must be numbers for '/' operator.".to_string())
                 }
             }
+            TokenType::Greater => {
+                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
+                    Ok(MskValue::Boolean(l > r))
+                } else {
+                    Err("Operands must be numbers for '>' operator.".to_string())
+                }
+            }
+            TokenType::GreaterEqual => {
+                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
+                    Ok(MskValue::Boolean(l >= r))
+                } else {
+                    Err("Operands must be numbers for '>=' operator.".to_string())
+                }
+            }
+            TokenType::Less => {
+                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
+                    Ok(MskValue::Boolean(l < r))
+                } else {
+                    Err("Operands must be numbers for '<' operator.".to_string())
+                }
+            }
+            TokenType::LessEqual => {
+                if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
+                    Ok(MskValue::Boolean(l <= r))
+                } else {
+                    Err("Operands must be numbers for '<=' operator.".to_string())
+                }
+            }
+            TokenType::EqualEqual => {
+                let (l,r) = (left.is_true(),right.is_true());
+                Ok(MskValue::Boolean(l == r))
+            }
+            TokenType::BangEqual => {
+                let (l,r) = (left.is_true(),right.is_true());
+                Ok(MskValue::Boolean(l != r))
+            }
             _ => Err(format!("Unsupported binary operator: {:?}", operator)),
         }
     }
