@@ -8,6 +8,7 @@ mod parser;
 mod ast;
 mod msk_value;
 mod interpreter;
+mod environment;
 
 use std::env; // 用于处理命令行参数
 use std::fs; // 用于文件系统操作，如读取文件
@@ -86,7 +87,7 @@ fn main() {
             // 3. 解释阶段
             if !had_error {
                 if let Some(expr) = expr_option {
-                    let interpreter = interpreter::Interpreter::new();
+                    let mut interpreter = interpreter::Interpreter::new();
                     match interpreter.evaluate(expr) {
                         Ok(value) => println!("{}", value),
                         Err(e) => {
@@ -112,12 +113,10 @@ fn main() {
             // 3. 执行阶段
             if !had_error {
                 if let Some(stmts) = stmts_option {
-                    let interpreter = interpreter::Interpreter::new();
-                    for stmt in stmts {
-                        if let Err(e) = interpreter.interpret(stmt) {
-                            writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
-                            interpreter_error = true;
-                        }
+                    let mut interpreter = interpreter::Interpreter::new();
+                    if let Err(e) = interpreter.interpret(stmts) {
+                        writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
+                        interpreter_error = true;
                     }
                 }
             }

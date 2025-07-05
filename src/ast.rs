@@ -24,6 +24,10 @@ pub enum Expr {
     Literal {
         value: Token,
     },
+    /// 变量访问表达式，例如 `x` 或 `myVariable`
+    Variable {
+        name: Token,
+    },
 }
 
 impl Expr {
@@ -61,6 +65,9 @@ impl Expr {
                     value.lexeme.clone()
                 }
             }
+            Expr::Variable { name } => {
+                name.lexeme.clone()
+            }
         }
     }
 }
@@ -70,5 +77,10 @@ pub enum Stmt{
     },
     Expression {
         expression: Expr,
+    },
+    /// 变量声明语句，例如 `var x = 5;` 或 `var y;`
+    Var {
+        name: Token,
+        initializer: Option<Expr>,
     },
 }

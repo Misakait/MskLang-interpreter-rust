@@ -1,37 +1,48 @@
 use crate::ast::{Expr, Stmt};
+use crate::environment::Environment;
 use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
 
 pub struct Interpreter {
-
+    env: Environment,
 }
 
 impl Interpreter {
-    pub fn interpret(&self, stmt: Stmt) -> Result<(), String> {
-        match stmt {
-            Stmt::Expression { expression } => {
-                let value = self.evaluate(expression)?;
-                println!("{}", value);
-                Ok(())
-            }
-            Stmt::Print { expression } => {
-                let value = self.evaluate(expression)?;
-                println!("{}", value);
-                Ok(())
+    pub fn interpret(&mut self, stmt: Vec<Stmt>) -> Result<(), String> {
+        for stmt in stmt {
+            match stmt {
+                Stmt::Expression { expression } => {
+                    self.evaluate(expression)?;
+                }
+                Stmt::Print { expression } => {
+                    let value = self.evaluate(expression)?;
+                    println!("{}", value);
+                }
+                Stmt::Var { name, initializer } => {
+                    let value = if let Some(init) = initializer {
+                        self.evaluate(init)?
+                    } else {
+                        MskValue::Nil  // 如果没有初始化表达式，默认为 nil
+                    };
+                    self.env.define(name.lexeme, value);
+                }
             }
         }
+        Ok(())
     }
 }
 
 impl Interpreter {
     /// 创建一个新的 Interpreter 实例。
     pub fn new() -> Self {
-        Interpreter {}
+        Interpreter {
+            env: Environment::new(),
+        }
     }
 
     /// 解释并执行给定的 AST 表达式。
     /// 返回一个 Result，包含执行结果或错误信息。
-    pub fn evaluate(&self, expr: Expr) -> Result<MskValue, String> {
+    pub fn evaluate(&mut self, expr: Expr) -> Result<MskValue, String> {
         match expr {
             Expr::Unary { operator, right } => {
                 let value = self.evaluate(*right)?;
@@ -60,6 +71,9 @@ impl Interpreter {
                     }
                 }
             },
+            Expr::Variable { name } => {
+                self.env.get(&name.lexeme)
+            }
         }
     }
     fn evaluate_binary(&self, operator: Token, left: MskValue, right: MskValue) -> Result<MskValue, String> {
