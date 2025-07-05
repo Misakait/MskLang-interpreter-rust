@@ -64,3 +64,11 @@ impl Expr {
         }
     }
 }
+pub enum Stmt{
+    Print {
+        expression: Expr,
+    },
+    Expression {
+        expression: Expr,
+    },
+}

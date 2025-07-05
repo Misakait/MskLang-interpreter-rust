@@ -2,7 +2,8 @@
 //! 这是解释器的语法分析阶段。
 
 use std::cell::Cell;
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
+use crate::ast::Stmt::Expression;
 use crate::token::{Token, TokenType};
 
 /// Parser 结构体接收一个 Token 序列，并根据 Lox 语言的语法规则进行解析。
@@ -28,7 +29,42 @@ impl Parser {
     /// 开始解析 Token 序列，尝试构建一个 AST 表达式。
     /// 如果解析成功，返回 `Some(Expr)`；如果遇到错误，则返回 `None`。
     /// 同时返回一个布尔值，表示在解析过程中是否发生了错误。
-    pub fn parse(&mut self) -> (Option<Expr>, bool) {
+    pub fn parse(&mut self) -> (Option<Vec<Stmt>>, bool) {
+        if self.peek().token_type == TokenType::Eof {
+            return (None, self.had_error.get());
+        }
+        let mut stmts: Vec<Stmt> = Vec::new();
+        while !self.is_at_end() {
+            stmts.push(self.statement());
+        }
+        // if !self.is_at_end() {
+        //     // self.error(self.peek(), "Expect end of expression.");
+        // }
+        if self.had_error.get() {
+            (None, true)
+        } else {
+            (Some(stmts), false)
+        }
+    }
+    fn statement(&mut self) -> Stmt {
+        if self.match_token(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+    fn print_statement(&mut self) -> Stmt {
+        let value = self.expression();
+        self.consume(TokenType::Semicolon, "Expect ';' after value.");
+        Stmt::Print {
+            expression: value,
+        }
+    }
+    fn expression_statement(&mut self) -> Stmt {
+        let expr = self.expression();
+        self.consume(TokenType::Semicolon, "Expect ';' after expression.");
+        Stmt::Expression { expression: expr }
+    }
+    pub fn parse_expr(&mut self) -> (Option<Expr>, bool) {
         if self.peek().token_type == TokenType::Eof {
             return (None, self.had_error.get());
         }
@@ -42,12 +78,12 @@ impl Parser {
             (Some(expr), false)
         }
     }
-
     /// 解析一个表达式。这是解析的入口。
     /// expression -> unary
     fn expression(&mut self) -> Expr {
         self.equality()
     }
+    
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
         if self.match_token(&[

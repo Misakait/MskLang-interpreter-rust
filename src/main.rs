@@ -59,7 +59,7 @@ fn main() {
 
             // 2. 解析阶段
             let mut parser = Parser::new(tokens);
-            let (expr_option, had_parser_error) = parser.parse();
+            let (expr_option, had_parser_error) = parser.parse_expr();
 
             // 检查在任何阶段是否发生了错误
             had_error = had_scanner_error || had_parser_error;
@@ -78,7 +78,7 @@ fn main() {
 
             // 2. 解析阶段
             let mut parser = Parser::new(tokens);
-            let (expr_option, had_parser_error) = parser.parse();
+            let (expr_option, had_parser_error) = parser.parse_expr();
 
             // 检查在任何阶段是否发生了错误
             had_error = had_scanner_error || had_parser_error;
@@ -87,9 +87,34 @@ fn main() {
             if !had_error {
                 if let Some(expr) = expr_option {
                     let interpreter = interpreter::Interpreter::new();
-                    match interpreter.interpret(expr) {
+                    match interpreter.evaluate(expr) {
                         Ok(value) => println!("{}", value),
                         Err(e) => {
+                            writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
+                            interpreter_error = true;
+                        }
+                    }
+                }
+            }
+        }
+        "run" => {
+            // 1. 扫描阶段
+            let scanner = Scanner::new(&file_contents);
+            let (tokens, had_scanner_error) = scanner.scan_tokens();
+
+            // 2. 解析阶段
+            let mut parser = Parser::new(tokens);
+            let (stmts_option, had_parser_error) = parser.parse();
+
+            // 检查在任何阶段是否发生了错误
+            had_error = had_scanner_error || had_parser_error;
+
+            // 3. 执行阶段
+            if !had_error {
+                if let Some(stmts) = stmts_option {
+                    let interpreter = interpreter::Interpreter::new();
+                    for stmt in stmts {
+                        if let Err(e) = interpreter.interpret(stmt) {
                             writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
                             interpreter_error = true;
                         }

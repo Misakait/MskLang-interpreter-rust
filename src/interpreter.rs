@@ -1,10 +1,28 @@
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
 use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
 
 pub struct Interpreter {
 
 }
+
+impl Interpreter {
+    pub fn interpret(&self, stmt: Stmt) -> Result<(), String> {
+        match stmt {
+            Stmt::Expression { expression } => {
+                let value = self.evaluate(expression)?;
+                println!("{}", value);
+                Ok(())
+            }
+            Stmt::Print { expression } => {
+                let value = self.evaluate(expression)?;
+                println!("{}", value);
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Interpreter {
     /// 创建一个新的 Interpreter 实例。
     pub fn new() -> Self {
@@ -13,18 +31,18 @@ impl Interpreter {
 
     /// 解释并执行给定的 AST 表达式。
     /// 返回一个 Result，包含执行结果或错误信息。
-    pub fn interpret(&self, expr: Expr) -> Result<MskValue, String> {
+    pub fn evaluate(&self, expr: Expr) -> Result<MskValue, String> {
         match expr {
             Expr::Unary { operator, right } => {
-                let value = self.interpret(*right)?;
+                let value = self.evaluate(*right)?;
                 self.evaluate_unary(operator, value)
             }
             Expr::Binary { left, operator, right } => {
-                let left_value = self.interpret(*left)?;
-                let right_value = self.interpret(*right)?;
+                let left_value = self.evaluate(*left)?;
+                let right_value = self.evaluate(*right)?;
                 self.evaluate_binary(operator, left_value, right_value)
             }
-            Expr::Grouping { expression } => self.interpret(*expression),
+            Expr::Grouping { expression } => self.evaluate(*expression),
             Expr::Literal { value } => {
                 match value.token_type {
                     TokenType::String => Ok(MskValue::String(value.literal.unwrap().to_string())),
