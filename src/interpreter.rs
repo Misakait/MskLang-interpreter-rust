@@ -26,12 +26,30 @@ impl Interpreter {
                     };
                     self.env.define(name.lexeme, value);
                 }
+                Stmt::Block { statements } => {
+                    self.begin_scope();
+                    let result = self.interpret(statements);
+                    self.end_scope();
+                    result?
+                }
             }
         }
         Ok(())
     }
 }
-
+impl Interpreter {
+    /// 创建一个新的 Interpreter 实例。
+    fn begin_scope(&mut self) {
+        self.env = Environment::new_with_parent(self.env.clone());
+    }
+    fn end_scope(&mut self) {
+        self.env = if let Some(env) = self.env.get_parent(){
+            env
+        }else{
+            Environment::new()
+        };
+    }
+}
 impl Interpreter {
     /// 创建一个新的 Interpreter 实例。
     pub fn new() -> Self {
@@ -72,7 +90,12 @@ impl Interpreter {
                 }
             },
             Expr::Variable { name } => {
-                self.env.get(&name.lexeme)
+                self.env.get(&name.lexeme,name.line)
+            }
+            Expr::Assign { name, value } => {
+                let result = self.evaluate(*value)?;
+                self.env.assign(&name.lexeme,result.clone())?;
+                Ok(result)
             }
         }
     }

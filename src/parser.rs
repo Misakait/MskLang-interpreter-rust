@@ -47,6 +47,10 @@ impl Parser {
         }
     }
     fn statement(&mut self) -> Stmt {
+        if self.match_token(&[TokenType::LeftBrace]) {
+            // 处理块语句
+            return self.block_statement();
+        }
         if self.match_token(&[TokenType::Var]) {
             return self.var_declaration();
         }
@@ -60,12 +64,12 @@ impl Parser {
     /// var_declaration -> "var" IDENTIFIER ( "=" expression )? ";" ;
     fn var_declaration(&mut self) -> Stmt {
         let name = self.consume(TokenType::Identifier, "Expect variable name.").clone();
-        
+
         let mut initializer = None;
         if self.match_token(&[TokenType::Equal]) {
             initializer = Some(self.expression());
         }
-        
+
         self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.");
         Stmt::Var { name, initializer }
     }
@@ -75,6 +79,19 @@ impl Parser {
         self.consume(TokenType::Semicolon, "Expect ';' after value.");
         Stmt::Print {
             expression: value,
+        }
+    }
+    fn block_statement(&mut self) -> Stmt {
+        let mut stmts: Vec<Stmt> =  Vec::new();
+        while !self.match_token(&[TokenType::RightBrace]) {
+            if self.is_at_end(){
+                self.error(self.peek(), "Expect '}' after block.");
+                break;
+            }
+            stmts.push(self.statement());
+        }
+        Stmt::Block {
+            statements: stmts,
         }
     }
     fn expression_statement(&mut self) -> Stmt {
@@ -99,9 +116,28 @@ impl Parser {
     /// 解析一个表达式。这是解析的入口。
     /// expression -> unary
     fn expression(&mut self) -> Expr {
-        self.equality()
+        self.assignment()
     }
-    
+
+    fn assignment(&mut self) -> Expr {
+        let expr = self.equality();
+        if self.match_token(&[TokenType::Equal]) {
+            let equals = self.previous().clone();
+            let value = self.assignment(); // 右结合性：递归调用自己
+
+            if let Expr::Variable { name } = expr {
+                return Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                };
+            }
+
+            self.error(&equals, "Invalid assignment target.");
+        }
+
+        expr
+    }
+
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
         if self.match_token(&[

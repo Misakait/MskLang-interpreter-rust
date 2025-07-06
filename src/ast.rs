@@ -28,6 +28,10 @@ pub enum Expr {
     Variable {
         name: Token,
     },
+    Assign {
+        name: Token,  // 被赋值的变量标识符
+        value: Box<Expr>,
+    },
 }
 
 impl Expr {
@@ -68,6 +72,9 @@ impl Expr {
             Expr::Variable { name } => {
                 name.lexeme.clone()
             }
+            Expr::Assign { name, value } => {
+                format!("(assign {} {})", name.lexeme, value.to_string_sexpr())
+            }
         }
     }
 }
@@ -83,4 +90,7 @@ pub enum Stmt{
         name: Token,
         initializer: Option<Expr>,
     },
+    Block{
+        statements: Vec<Stmt>,
+    }
 }
