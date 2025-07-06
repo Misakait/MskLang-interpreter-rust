@@ -1,10 +1,28 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use crate::ast::{Expr, Stmt};
 use crate::environment::Environment;
 use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
+struct ScopeGuard<'a> {
+    interpreter: &'a mut Interpreter,
+}
 
+impl<'a> ScopeGuard<'a> {
+    fn new(interpreter: &'a mut Interpreter) -> Self {
+        interpreter.begin_scope();  // 构造时进入作用域
+        ScopeGuard { interpreter }
+    }
+}
+
+impl<'a> Drop for ScopeGuard<'a> {
+    fn drop(&mut self) {
+        self.interpreter.end_scope();  // 析构时自动退出作用域
+    }
+}
 pub struct Interpreter {
-    env: Environment,
+    env: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
@@ -24,13 +42,11 @@ impl Interpreter {
                     } else {
                         MskValue::Nil  // 如果没有初始化表达式，默认为 nil
                     };
-                    self.env.define(name.lexeme, value);
+                    self.env.borrow_mut().define(name.lexeme, value);
                 }
                 Stmt::Block { statements } => {
-                    self.begin_scope();
-                    let result = self.interpret(statements);
-                    self.end_scope();
-                    result?
+                    let guard = ScopeGuard::new(self);
+                    guard.interpreter.interpret(statements)?;
                 }
             }
         }
@@ -43,18 +59,19 @@ impl Interpreter {
         self.env = Environment::new_with_parent(self.env.clone());
     }
     fn end_scope(&mut self) {
-        self.env = if let Some(env) = self.env.get_parent(){
-            env
+        let env = if let Some(value) = self.env.borrow().get_parent_env() {
+            value
         }else{
-            Environment::new()
+            Rc::new(RefCell::new(Environment::new()))
         };
+        self.env = env;
     }
 }
 impl Interpreter {
     /// 创建一个新的 Interpreter 实例。
     pub fn new() -> Self {
         Interpreter {
-            env: Environment::new(),
+            env: Rc::new(RefCell::new(Environment::new()))
         }
     }
 
@@ -90,11 +107,11 @@ impl Interpreter {
                 }
             },
             Expr::Variable { name } => {
-                self.env.get(&name.lexeme,name.line)
+                self.env.borrow().get(&name.lexeme,name.line)
             }
             Expr::Assign { name, value } => {
                 let result = self.evaluate(*value)?;
-                self.env.assign(&name.lexeme,result.clone())?;
+                self.env.borrow_mut().assign(&name.lexeme,result.clone())?;
                 Ok(result)
             }
         }

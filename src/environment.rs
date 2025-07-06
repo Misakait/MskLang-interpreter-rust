@@ -1,17 +1,17 @@
 //! environment.rs - 管理变量作用域和存储
 //! 环境用于存储变量名到值的映射，支持作用域的嵌套
 
+use std::cell::RefCell;
 use crate::msk_value::MskValue;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// Environment 结构体管理变量的存储
 /// 使用 HashMap 存储变量名到值的映射
 #[derive(Clone)]
 pub struct Environment {
-    /// 存储变量名到值的映射
     values: HashMap<String, MskValue>,
-    /// 父环境（外部作用域）
-    parent: Option<Box<Environment>>,
+    parent: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
@@ -23,11 +23,12 @@ impl Environment {
         }
     }
 
-    pub fn new_with_parent(parent: Environment) -> Self {
-        Environment {
+    pub fn new_with_parent(parent: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
+        let env = Environment {
             values: HashMap::new(),
-            parent: Some(Box::new(parent)),
-        }
+            parent: Some(parent),
+        };
+        Rc::new(RefCell::new(env))
     }
 
     /// 定义一个新变量
@@ -54,9 +55,9 @@ impl Environment {
 
     fn get_from_parent(&self, name: &str) -> Option<MskValue> {
         if let Some(parent) = &self.parent {
-            match parent.values.get(name){
+            match parent.borrow().values.get(name){
                 Some(value) => Some(value.clone()),
-                None => parent.get_from_parent(name),
+                None => parent.borrow().get_from_parent(name),
             }
         }else {
             None
@@ -67,20 +68,21 @@ impl Environment {
             self.values.insert(name.to_string(), value);
             Ok(())
         } else {
-            match &mut self.parent{
+            match &self.parent{
                 None => Err(format!("Undefined variable '{}'.", name)),
                 Some(p) => {
-                    p.assign(name, value)
+                    p.borrow_mut().assign(name, value)
                 }
             }
         }
     }
-    pub fn get_parent(&self) -> Option<Environment> {
-        match &self.parent {
-            None => None,
-            Some(env_ptr) => {
-                Some((**env_ptr).clone())
-            }
-        }
+    pub fn get_parent_env(&self) -> Option<Rc<RefCell<Environment>>> {
+       match &self.parent{
+           None => None,
+           Some(env) => {
+                Some(env.clone())
+           }
+       }
     }
+
 }
