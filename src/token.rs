@@ -24,7 +24,7 @@ pub enum TokenType {
 
     // 关键字。
     And, Class, Else, False, Fun, For, If, Nil, Or,
-    Print, Return, Super, This, True, Var, While,
+    Print, Return, Super, This, True, Var, While,Break, Continue,
 
     Eof // 文件结束符
 }

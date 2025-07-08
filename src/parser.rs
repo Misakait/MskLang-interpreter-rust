@@ -63,7 +63,23 @@ impl Parser {
         if self.match_token(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.match_token(&[TokenType::Break]) {
+            return self.break_statement();
+        }
+        if self.match_token(&[TokenType::Continue]) {
+            return self.continue_statement();
+        }
         self.expression_statement()
+    }
+    fn break_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        self.consume(TokenType::Semicolon, "Expect ';' after break statement.");
+        Stmt::Break { name }
+    }
+    fn continue_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        self.consume(TokenType::Semicolon, "Expect ';' after continue statement.");
+        Stmt::Continue { name }
     }
     fn while_statement(&mut self) -> Stmt {
         let name = self.previous().clone();

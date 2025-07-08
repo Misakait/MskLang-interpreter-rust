@@ -4,6 +4,16 @@ use crate::ast::{Expr, Stmt};
 use crate::environment::Environment;
 use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
+use crate::control_flow::ControlFlow;
+pub enum RuntimeError {
+    Error(String),
+    Control(ControlFlow),
+}
+impl From<String> for RuntimeError {
+    fn from(error: String) -> Self {
+        RuntimeError::Error(error)
+    }
+}
 struct ScopeGuard<'a> {
     interpreter: &'a mut Interpreter,
 }
@@ -25,7 +35,7 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&mut self, stmt: &[Stmt]) -> Result<(), String> {
+    pub fn interpret(&mut self, stmt: &[Stmt]) -> Result<(), RuntimeError> {
         for stmt in stmt {
             match stmt {
                 Stmt::Expression { expression } => {
@@ -79,8 +89,23 @@ impl Interpreter {
                         std::slice::from_ref(&**body)
                     };
                     while self.evaluate(condition)?.is_true() {
-                        self.interpret(stmt_wrapper)?;
+                        match self.interpret(stmt_wrapper) {
+                            Ok(()) => {}, // 正常执行
+                            Err(RuntimeError::Control(ControlFlow::Break)) => {
+                                break; // 遇到 Break 语句，退出循环
+                            }
+                            Err(RuntimeError::Control(ControlFlow::Continue)) => {
+                                continue; // 遇到 Continue 语句，跳过当前循环迭代
+                            }
+                            Err(e) => return Err(e), // 其他错误直接返回
+                        }
                     }
+                }
+                Stmt::Break { .. } => {
+                    return Err(RuntimeError::Control(ControlFlow::Break));
+                }
+                Stmt::Continue { .. } => {
+                    return Err(RuntimeError::Control(ControlFlow::Continue));
                 }
             }
         }

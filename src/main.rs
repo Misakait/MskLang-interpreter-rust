@@ -9,6 +9,7 @@ mod ast;
 mod msk_value;
 mod interpreter;
 mod environment;
+mod control_flow;
 
 use std::env; // 用于处理命令行参数
 use std::fs; // 用于文件系统操作，如读取文件
@@ -18,6 +19,7 @@ use std::process::exit; // 用于以特定的退出码终止程序
 // 从我们自己的模块中导入所需的结构体。
 use scanner::Scanner;
 use parser::Parser;
+use crate::interpreter::RuntimeError;
 
 /// 程序的主函数。
 fn main() {
@@ -114,7 +116,7 @@ fn main() {
             if !had_error {
                 if let Some(stmts) = stmts_option {
                     let mut interpreter = interpreter::Interpreter::new();
-                    if let Err(e) = interpreter.interpret(stmts.as_slice()) {
+                    if let Err(RuntimeError::Error(e)) = interpreter.interpret(stmts.as_slice()) {
                         writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
                         interpreter_error = true;
                     }

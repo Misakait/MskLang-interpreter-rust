@@ -116,4 +116,10 @@ pub enum Stmt{
         condition: Expr,
         body: Box<Stmt>,
     },
+    Break {
+        name: Token,
+    },
+    Continue {
+        name: Token,
+    },
 }
