@@ -88,7 +88,7 @@ fn main() {
             if !had_error {
                 if let Some(expr) = expr_option {
                     let mut interpreter = interpreter::Interpreter::new();
-                    match interpreter.evaluate(expr) {
+                    match interpreter.evaluate(&expr) {
                         Ok(value) => println!("{}", value),
                         Err(e) => {
                             writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
@@ -114,7 +114,7 @@ fn main() {
             if !had_error {
                 if let Some(stmts) = stmts_option {
                     let mut interpreter = interpreter::Interpreter::new();
-                    if let Err(e) = interpreter.interpret(stmts) {
+                    if let Err(e) = interpreter.interpret(stmts.as_slice()) {
                         writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
                         interpreter_error = true;
                     }

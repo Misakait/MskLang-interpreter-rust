@@ -33,8 +33,8 @@ impl Environment {
 
     /// 定义一个新变量
     /// 如果变量已存在，会覆盖原值（Lox 允许重新声明变量）
-    pub fn define(&mut self, name: String, value: MskValue) {
-        self.values.insert(name, value);
+    pub fn define(&mut self, name: &str, value: MskValue) {
+        self.values.insert(name.into(), value);
     }
 
     /// 获取变量的值

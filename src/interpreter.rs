@@ -25,45 +25,45 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&mut self, stmt: Vec<Stmt>) -> Result<(), String> {
+    pub fn interpret(&mut self, stmt: &[Stmt]) -> Result<(), String> {
         for stmt in stmt {
             match stmt {
                 Stmt::Expression { expression } => {
-                    self.evaluate(expression)?;
+                    self.evaluate(&expression)?;
                 }
                 Stmt::Print { expression } => {
-                    let value = self.evaluate(expression)?;
+                    let value = self.evaluate(&expression)?;
                     println!("{}", value);
                 }
                 Stmt::Var { name, initializer } => {
                     let value = if let Some(init) = initializer {
-                        self.evaluate(init)?
+                        self.evaluate(&init)?
                     } else {
                         MskValue::Nil  // 如果没有初始化表达式，默认为 nil
                     };
-                    self.env.borrow_mut().define(name.lexeme, value);
+                    self.env.borrow_mut().define(&name.lexeme, value);
                 }
                 Stmt::Block { statements } => {
                     let guard = ScopeGuard::new(self);
                     guard.interpreter.interpret(statements)?;
                 }
                 Stmt::If { name, condition,then_branch,else_branch } => {
-                    let condition = self.evaluate(condition)?;
+                    let condition = self.evaluate(&condition)?;
                     // if let MskValue::Boolean(value) = condition {
                     let value = condition.is_true();
                         if value {
-                            let stmt_wrapper = if let Stmt::Block { statements } = *then_branch {
-                                statements
+                            let stmt_wrapper = if let Stmt::Block { statements } = &**then_branch {
+                                statements.as_slice()
                             } else {
-                                vec![*then_branch]
+                                std::slice::from_ref(&**then_branch)
                             };
                             self.interpret(stmt_wrapper)?
                         }else{
                             if let Some(else_branch) = else_branch {
-                                let stmt_wrapper = if let Stmt::Block { statements } = *else_branch {
-                                    statements
+                                let stmt_wrapper = if let Stmt::Block { statements } = &**else_branch {
+                                    statements.as_slice()
                                 } else {
-                                    vec![*else_branch]
+                                    std::slice::from_ref(&**else_branch)
                                 };
                                 self.interpret(stmt_wrapper)?;
                             }
@@ -71,6 +71,16 @@ impl Interpreter {
                     // }else{
                     //     return Err(format!("[line {}] Condition must be a boolean.", name.line));
                     // }
+                }
+                Stmt::While { name, condition, body } => {
+                    let stmt_wrapper = if let Stmt::Block { statements } = &**body {
+                        statements.as_slice()
+                    } else {
+                        std::slice::from_ref(&**body)
+                    };
+                    while self.evaluate(condition)?.is_true() {
+                        self.interpret(stmt_wrapper)?;
+                    }
                 }
             }
         }
@@ -101,24 +111,24 @@ impl Interpreter {
 
     /// 解释并执行给定的 AST 表达式。
     /// 返回一个 Result，包含执行结果或错误信息。
-    pub fn evaluate(&mut self, expr: Expr) -> Result<MskValue, String> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<MskValue, String> {
         match expr {
             Expr::Unary { operator, right } => {
-                let value = self.evaluate(*right)?;
-                self.evaluate_unary(operator, value)
+                let value = self.evaluate(&*right)?;
+                self.evaluate_unary(&*operator, value)
             }
             Expr::Binary { left, operator, right } => {
-                let left_value = self.evaluate(*left)?;
-                let right_value = self.evaluate(*right)?;
-                self.evaluate_binary(operator, left_value, right_value)
+                let left_value = self.evaluate(&*left)?;
+                let right_value = self.evaluate(&*right)?;
+                self.evaluate_binary(&operator, left_value, right_value)
             }
-            Expr::Grouping { expression } => self.evaluate(*expression),
+            Expr::Grouping { expression } => self.evaluate(&*expression),
             Expr::Literal { value } => {
                 match value.token_type {
-                    TokenType::String => Ok(MskValue::String(value.literal.unwrap().to_string())),
+                    TokenType::String => Ok(MskValue::String(value.literal.as_ref().unwrap().to_string())),
                     TokenType::Number => {
-                        match value.literal.unwrap() {
-                            Literal::Number(n) => Ok(MskValue::Float(n)),
+                        match value.literal.as_ref().unwrap() {
+                            Literal::Number(n) => Ok(MskValue::Float(*n)),
                             _ => Err(format!("Unexpected number type for token: {}", value.lexeme)),
                         }
                     }
@@ -134,12 +144,12 @@ impl Interpreter {
                 self.env.borrow().get(&name.lexeme,name.line)
             }
             Expr::Assign { name, value } => {
-                let result = self.evaluate(*value)?;
+                let result = self.evaluate(&*value)?;
                 self.env.borrow_mut().assign(&name.lexeme,result.clone())?;
                 Ok(result)
             }
             Expr::Logical { left, operator, right } => {
-                let left_value = self.evaluate(*left)?;
+                let left_value = self.evaluate(&*left)?;
                 if operator.token_type == TokenType::Or {
                     if left_value.is_true() {
                         return Ok(left_value);
@@ -149,12 +159,12 @@ impl Interpreter {
                         return Ok(left_value);
                     }
                 }
-                let right_value = self.evaluate(*right)?;
+                let right_value = self.evaluate(&*right)?;
                 Ok(right_value)
             }
         }
     }
-    fn evaluate_binary(&self, operator: Token, left: MskValue, right: MskValue) -> Result<MskValue, String> {
+    fn evaluate_binary(&self, operator: &Token, left: MskValue, right: MskValue) -> Result<MskValue, String> {
         match operator.token_type {
             TokenType::Plus => match (left, right) {
                 (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Float(l + r)),
@@ -232,7 +242,7 @@ impl Interpreter {
             _ => Err(format!("[line {}] Unsupported binary operator: {:?}", operator.line, operator)),
         }
     }
-    fn evaluate_unary(&self, operator: Token, value: MskValue) -> Result<MskValue, String> {
+    fn evaluate_unary(&self, operator: &Token, value: MskValue) -> Result<MskValue, String> {
         match operator.token_type {
             TokenType::Minus => {
                 if let MskValue::Float(n) = value {

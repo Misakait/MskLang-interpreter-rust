@@ -110,5 +110,10 @@ pub enum Stmt{
         condition: Expr,
         then_branch: Box<Stmt>,
         else_branch: Option<Box<Stmt>>,
-    }
+    },
+    While {
+        name: Token,
+        condition: Expr,
+        body: Box<Stmt>,
+    },
 }

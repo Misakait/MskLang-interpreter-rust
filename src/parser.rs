@@ -47,6 +47,9 @@ impl Parser {
         }
     }
     fn statement(&mut self) -> Stmt {
+        if self.match_token(&[TokenType::While]) {
+            return self.while_statement();
+        }
         if self.match_token(&[TokenType::LeftBrace]) {
             // 处理块语句
             return self.block_statement();
@@ -61,6 +64,18 @@ impl Parser {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+    fn while_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'While'.");
+        let condition = self.expression();
+        self.consume(TokenType::RightParen, "Expect ')' after 'the condition of While statement'.");
+        let body = Box::new(self.statement());
+        Stmt::While {
+            name,
+            condition,
+            body
+        }
     }
     fn if_statement(&mut self) -> Stmt {
         let name = self.previous().clone();
