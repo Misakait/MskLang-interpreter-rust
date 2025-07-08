@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use crate::ast::{Expr, Stmt};
 use crate::environment::Environment;
@@ -47,6 +46,31 @@ impl Interpreter {
                 Stmt::Block { statements } => {
                     let guard = ScopeGuard::new(self);
                     guard.interpreter.interpret(statements)?;
+                }
+                Stmt::If { name, condition,then_branch,else_branch } => {
+                    let condition = self.evaluate(condition)?;
+                    // if let MskValue::Boolean(value) = condition {
+                    let value = condition.is_true();
+                        if value {
+                            let stmt_wrapper = if let Stmt::Block { statements } = *then_branch {
+                                statements
+                            } else {
+                                vec![*then_branch]
+                            };
+                            self.interpret(stmt_wrapper)?
+                        }else{
+                            if let Some(else_branch) = else_branch {
+                                let stmt_wrapper = if let Stmt::Block { statements } = *else_branch {
+                                    statements
+                                } else {
+                                    vec![*else_branch]
+                                };
+                                self.interpret(stmt_wrapper)?;
+                            }
+                        }
+                    // }else{
+                    //     return Err(format!("[line {}] Condition must be a boolean.", name.line));
+                    // }
                 }
             }
         }
@@ -113,6 +137,20 @@ impl Interpreter {
                 let result = self.evaluate(*value)?;
                 self.env.borrow_mut().assign(&name.lexeme,result.clone())?;
                 Ok(result)
+            }
+            Expr::Logical { left, operator, right } => {
+                let left_value = self.evaluate(*left)?;
+                if operator.token_type == TokenType::Or {
+                    if left_value.is_true() {
+                        return Ok(left_value);
+                    }
+                } else if operator.token_type == TokenType::And {
+                    if !left_value.is_true() {
+                        return Ok(left_value);
+                    }
+                }
+                let right_value = self.evaluate(*right)?;
+                Ok(right_value)
             }
         }
     }

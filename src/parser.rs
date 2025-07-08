@@ -51,6 +51,9 @@ impl Parser {
             // 处理块语句
             return self.block_statement();
         }
+        if self.match_token(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.match_token(&[TokenType::Var]) {
             return self.var_declaration();
         }
@@ -59,7 +62,23 @@ impl Parser {
         }
         self.expression_statement()
     }
-
+    fn if_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.");
+        let condition = self.expression();
+        self.consume(TokenType::RightParen, "Expect ')' after 'the condition of if statement'.");
+        let then_branch = Box::new(self.statement());
+        let mut else_branch = None;
+        if self.match_token(&[TokenType::Else]) {
+            else_branch = Some(Box::new(self.statement()));
+        }
+        Stmt::If {
+            name,
+            condition,
+            then_branch,
+            else_branch,
+        }
+    }
     /// 解析变量声明语句
     /// var_declaration -> "var" IDENTIFIER ( "=" expression )? ";" ;
     fn var_declaration(&mut self) -> Stmt {
@@ -120,7 +139,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Expr {
-        let expr = self.equality();
+        let expr = self.logic();
         if self.match_token(&[TokenType::Equal]) {
             let equals = self.previous().clone();
             let value = self.assignment(); // 右结合性：递归调用自己
@@ -131,10 +150,22 @@ impl Parser {
                     value: Box::new(value),
                 };
             }
-
             self.error(&equals, "Invalid assignment target.");
         }
-
+        expr
+    }
+    /// 逻辑表达式解析入口。
+    fn logic(&mut self) -> Expr {
+        let mut expr = self.equality();
+        while self.match_token(&[TokenType::Or,TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.equality();
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
         expr
     }
 

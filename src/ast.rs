@@ -32,6 +32,11 @@ pub enum Expr {
         name: Token,  // 被赋值的变量标识符
         value: Box<Expr>,
     },
+    Logical {
+        left: Box<Expr>,
+        operator: Token, // 逻辑运算符，例如 `and`, `or`
+        right: Box<Expr>,
+    },
 }
 
 impl Expr {
@@ -75,6 +80,13 @@ impl Expr {
             Expr::Assign { name, value } => {
                 format!("(assign {} {})", name.lexeme, value.to_string_sexpr())
             }
+            Expr::Logical { left, operator, right } => {
+                format!(
+                    "({} {} {})",
+                    left.to_string_sexpr(),
+                    operator.lexeme,
+                    right.to_string_sexpr())
+            }
         }
     }
 }
@@ -92,5 +104,11 @@ pub enum Stmt{
     },
     Block{
         statements: Vec<Stmt>,
+    },
+    If{
+        name: Token,
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
     }
 }
