@@ -50,6 +50,10 @@ impl Parser {
         if self.match_token(&[TokenType::While]) {
             return self.while_statement();
         }
+        if self.match_token(&[TokenType::For]) {
+            // 处理 for 循环语句
+            return self.for_statement();
+        }
         if self.match_token(&[TokenType::LeftBrace]) {
             // 处理块语句
             return self.block_statement();
@@ -70,6 +74,41 @@ impl Parser {
             return self.continue_statement();
         }
         self.expression_statement()
+    }
+    fn for_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.");
+
+        let initializer = if self.match_token(&[TokenType::Var]) {
+            Some(Box::new(self.var_declaration()))
+        } else if self.match_token(&[TokenType::Semicolon]) {
+            None
+        } else {
+            Some(Box::new(self.expression_statement()))
+        };
+
+        let condition = if self.check(&TokenType::Semicolon) {
+            None
+        } else {
+            Some(self.expression())
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after for clauses.");
+
+        let increment = if self.check(&TokenType::RightParen) {
+            None
+        } else {
+            Some(Box::new(self.increment_statement()))
+        };
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.");
+        let body = Box::new(self.statement());
+
+        Stmt::For {
+            name,
+            initializer,
+            condition,
+            increment,
+            body,
+        }
     }
     fn break_statement(&mut self) -> Stmt {
         let name = self.previous().clone();
@@ -147,6 +186,10 @@ impl Parser {
     fn expression_statement(&mut self) -> Stmt {
         let expr = self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after expression.");
+        Expression { expression: expr }
+    }
+    fn increment_statement(&mut self) -> Stmt {
+        let expr = self.expression();
         Expression { expression: expr }
     }
     pub fn parse_expr(&mut self) -> (Option<Expr>, bool) {

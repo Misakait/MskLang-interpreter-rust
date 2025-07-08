@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::slice;
 use crate::ast::{Expr, Stmt};
 use crate::environment::Environment;
 use crate::msk_value::MskValue;
@@ -62,19 +63,11 @@ impl Interpreter {
                     // if let MskValue::Boolean(value) = condition {
                     let value = condition.is_true();
                         if value {
-                            let stmt_wrapper = if let Stmt::Block { statements } = &**then_branch {
-                                statements.as_slice()
-                            } else {
-                                std::slice::from_ref(&**then_branch)
-                            };
+                            let stmt_wrapper = slice::from_ref(&**then_branch);
                             self.interpret(stmt_wrapper)?
                         }else{
                             if let Some(else_branch) = else_branch {
-                                let stmt_wrapper = if let Stmt::Block { statements } = &**else_branch {
-                                    statements.as_slice()
-                                } else {
-                                    std::slice::from_ref(&**else_branch)
-                                };
+                                let stmt_wrapper = slice::from_ref(&**else_branch);
                                 self.interpret(stmt_wrapper)?;
                             }
                         }
@@ -83,11 +76,7 @@ impl Interpreter {
                     // }
                 }
                 Stmt::While { name, condition, body } => {
-                    let stmt_wrapper = if let Stmt::Block { statements } = &**body {
-                        statements.as_slice()
-                    } else {
-                        std::slice::from_ref(&**body)
-                    };
+                    let stmt_wrapper = slice::from_ref(&**body);
                     while self.evaluate(condition)?.is_true() {
                         match self.interpret(stmt_wrapper) {
                             Ok(()) => {}, // 正常执行
@@ -100,6 +89,66 @@ impl Interpreter {
                             Err(e) => return Err(e), // 其他错误直接返回
                         }
                     }
+                }
+                Stmt::For { name, initializer, condition, increment, body } =>{
+                    let guard = ScopeGuard::new(self);
+                    // let stmt_wrapper = if let Stmt::Block { statements } = &**body {
+                    //     statements.as_slice()
+                    // } else {
+                    //     slice::from_ref(&**body)
+                    // };
+                    let stmt_wrapper = slice::from_ref(&**body);
+                    match initializer.as_ref() {
+                        None => {}
+                        Some(expr) => {
+                            let expr_slice = slice::from_ref(expr.as_ref());
+                            guard.interpreter.interpret(expr_slice)?;
+                        }
+                    }
+                    match condition{
+                        Some(cond) => {
+                            while guard.interpreter.evaluate(cond)?.is_true() {
+                                match guard.interpreter.interpret(stmt_wrapper) {
+                                    Ok(()) => {}, // 正常执行
+                                    Err(RuntimeError::Control(ControlFlow::Break)) => {
+                                        break; // 遇到 Break 语句，退出循环
+                                    }
+                                    Err(RuntimeError::Control(ControlFlow::Continue)) => {
+                                        if let Some(increment) = increment.as_ref() {
+                                            guard.interpreter.interpret(slice::from_ref(&**increment))?;
+                                        }
+                                        continue; // 遇到 Continue 语句，跳过当前循环迭代
+                                    }
+                                    Err(e) => return Err(e), // 其他错误直接返回
+                                }
+                                if let Some(increment) = increment.as_ref() {
+                                    guard.interpreter.interpret(slice::from_ref(&**increment))?;
+                                }
+                            }
+                        }
+                        None => {
+                            loop{
+                                match guard.interpreter.interpret(stmt_wrapper) {
+                                    Ok(()) => {}, // 正常执行
+                                    Err(RuntimeError::Control(ControlFlow::Break)) => {
+                                        break; // 遇到 Break 语句，退出循环
+                                    }
+                                    Err(RuntimeError::Control(ControlFlow::Continue)) => {
+                                        if let Some(increment) = increment.as_ref() {
+                                            guard.interpreter.interpret(slice::from_ref(&**increment))?;
+                                        }
+                                        continue; // 遇到 Continue 语句，跳过当前循环迭代
+                                    }
+                                    Err(e) => return Err(e), // 其他错误直接返回
+                                }
+                                if let Some(increment) = increment.as_ref() {
+                                    guard.interpreter.interpret(slice::from_ref(&**increment))?;
+                                }
+                            }
+                        } // 如果没有条件，直接进入循环
+                    }
+
+
                 }
                 Stmt::Break { .. } => {
                     return Err(RuntimeError::Control(ControlFlow::Break));

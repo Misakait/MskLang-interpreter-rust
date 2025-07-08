@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum MskValue {
     // 一个浮点数值。
     Float(f64),

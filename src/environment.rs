@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 /// Environment 结构体管理变量的存储
 /// 使用 HashMap 存储变量名到值的映射
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Environment {
     values: HashMap<String, MskValue>,
     parent: Option<Rc<RefCell<Environment>>>,

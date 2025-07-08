@@ -116,6 +116,13 @@ pub enum Stmt{
         condition: Expr,
         body: Box<Stmt>,
     },
+    For {
+        name: Token,
+        initializer: Option<Box<Stmt>>,
+        condition: Option<Expr>,
+        increment: Option<Box<Stmt>>,
+        body: Box<Stmt>,
+    },
     Break {
         name: Token,
     },
