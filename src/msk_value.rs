@@ -1,6 +1,8 @@
+use std::rc::Rc;
+use crate::callable::Callable;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone,Debug)]
+#[derive(Clone)]
 pub enum MskValue {
     // 一个浮点数值。
     Float(f64),
@@ -8,6 +10,7 @@ pub enum MskValue {
     Boolean(bool),
     /// 一个字符串值。
     String(String),
+    Callable(Rc<dyn Callable>),
     Nil,
 }
 
@@ -17,6 +20,7 @@ impl Display for MskValue {
             MskValue::Float(n) => write!(f, "{}", n),
             MskValue::Boolean(b) => write!(f, "{}", b),
             MskValue::String(s) => write!(f, "{}", s),
+            MskValue::Callable(_) => write!(f, "<fn>"),
             MskValue::Nil => write!(f, "nil"),
         }
     }

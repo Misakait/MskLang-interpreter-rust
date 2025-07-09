@@ -1,10 +1,10 @@
 //! parser.rs - 负责解析由 Scanner 生成的 Token 序列，并构建抽象语法树（AST）。
 //! 这是解释器的语法分析阶段。
 
-use std::cell::Cell;
-use crate::ast::{Expr, Stmt};
 use crate::ast::Stmt::Expression;
+use crate::ast::{Expr, Stmt};
 use crate::token::{Token, TokenType};
+use std::cell::Cell;
 
 /// Parser 结构体接收一个 Token 序列，并根据 Lox 语言的语法规则进行解析。
 pub struct Parser {
@@ -321,9 +321,32 @@ impl Parser {
             };
         }
         // 如果不是一元运算符，则继续解析主表达式。
-        self.primary()
+        self.call()
     }
-
+    fn call(&mut self) -> Expr {
+        let callee = self.primary();
+        if self.match_token(&[TokenType::LeftParen]) {
+            let mut arguments = Vec::new();
+            while !self.check(&TokenType::RightParen) {
+                arguments.push(self.expression());
+                if self.check(&TokenType::RightParen){
+                    break;
+                }
+                self.consume(TokenType::Comma, "Expect ',' after argument.");
+            }
+            if self.match_token(&[TokenType::RightParen]) {
+                let paren = self.previous().clone();
+                return Expr::Call {
+                    callee: Box::new(callee),
+                    paren,
+                    arguments,
+                }
+            }else{
+                self.error(self.peek(), "Expect ')' after arguments.");
+            }
+        }
+        callee
+    }
     /// 解析一个主表达式。
     /// primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
     fn primary(&mut self) -> Expr {

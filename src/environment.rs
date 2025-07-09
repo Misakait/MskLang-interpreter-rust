@@ -1,14 +1,15 @@
 //! environment.rs - 管理变量作用域和存储
 //! 环境用于存储变量名到值的映射，支持作用域的嵌套
 
-use std::cell::RefCell;
+use crate::RuntimeError;
 use crate::msk_value::MskValue;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 /// Environment 结构体管理变量的存储
 /// 使用 HashMap 存储变量名到值的映射
-#[derive(Clone,Debug)]
+// #[derive(Clone,Debug)]
 pub struct Environment {
     values: HashMap<String, MskValue>,
     parent: Option<Rc<RefCell<Environment>>>,
@@ -39,14 +40,14 @@ impl Environment {
 
     /// 获取变量的值
     /// 如果变量不存在，返回错误
-    pub fn get(&self, name: &str,line: usize) -> Result<MskValue, String> {
+    pub fn get(&self, name: &str,line: usize) -> Result<MskValue, RuntimeError> {
         match self.values.get(name) {
             Some(value) => Ok(value.clone()),
             None => {
                 match self.get_from_parent(name) {
                     Some(value) => Ok(value),
                     None => {
-                        Err(format!("[line {}] Undefined variable '{}'.", line, name))
+                        Err(format!("[line {}] Undefined variable '{}'.", line, name).into())
                     }
                 }
             }

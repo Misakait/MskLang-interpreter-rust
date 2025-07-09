@@ -1,6 +1,7 @@
 //! ast.rs - 定义抽象语法树（AST）的节点。
 //! AST 是解析器将源代码的语法结构进行模型化的方式。
 
+use std::fmt::format;
 use crate::token::{Literal, Token};
 
 /// Expr 枚举代表了 Lox 语言中所有可能的表达式。
@@ -37,25 +38,30 @@ pub enum Expr {
         operator: Token, // 逻辑运算符，例如 `and`, `or`
         right: Box<Expr>,
     },
+    Call {
+        callee: Box<Expr>,
+        paren: Token,
+        arguments: Vec<Expr>,
+    },
 }
 
 impl Expr {
     /// 将 AST 节点转换为 S-expression 字符串，用于调试和测试。
     /// 例如，一个 Unary 节点会变成 `(! true)`。
-    pub fn to_string_sexpr(&self) -> String {
+    pub fn to_string_expr(&self) -> String {
         match self {
             Expr::Unary { operator, right } => {
-                format!("({} {})", operator.lexeme, right.to_string_sexpr())
+                format!("({} {})", operator.lexeme, right.to_string_expr())
             }
             Expr::Grouping { expression } => {
-                format!("(group {})", expression.to_string_sexpr())
+                format!("(group {})", expression.to_string_expr())
             }
             Expr::Binary { left, operator, right } => {
                 format!(
                     "({} {} {})",
                     operator.lexeme,
-                    left.to_string_sexpr(),
-                    right.to_string_sexpr())
+                    left.to_string_expr(),
+                    right.to_string_expr())
             }
             Expr::Literal { value } => {
                 if let Some(literal) = &value.literal {
@@ -78,14 +84,24 @@ impl Expr {
                 name.lexeme.clone()
             }
             Expr::Assign { name, value } => {
-                format!("(assign {} {})", name.lexeme, value.to_string_sexpr())
+                format!("(assign {} {})", name.lexeme, value.to_string_expr())
             }
             Expr::Logical { left, operator, right } => {
                 format!(
                     "({} {} {})",
-                    left.to_string_sexpr(),
+                    left.to_string_expr(),
                     operator.lexeme,
-                    right.to_string_sexpr())
+                    right.to_string_expr())
+            }
+            Expr::Call { callee,arguments, .. } => {
+                format!(
+                    "(call {} {})",
+                    callee.to_string_expr(),
+                    arguments.iter()
+                        .map(|arg| arg.to_string_expr())
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                )
             }
         }
     }

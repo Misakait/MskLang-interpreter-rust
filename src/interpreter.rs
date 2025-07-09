@@ -1,11 +1,16 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::slice;
 use crate::ast::{Expr, Stmt};
+use crate::control_flow::ControlFlow;
 use crate::environment::Environment;
 use crate::msk_value::MskValue;
 use crate::token::{Literal, Token, TokenType};
-use crate::control_flow::ControlFlow;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::slice;
+use crate::callable::Callable;
+use crate::native_fun::ClockNative;
+use crate::register_natives;
+
 pub enum RuntimeError {
     Error(String),
     Control(ControlFlow),
@@ -178,14 +183,23 @@ impl Interpreter {
 impl Interpreter {
     /// 创建一个新的 Interpreter 实例。
     pub fn new() -> Self {
+        let global_env = Rc::new(RefCell::new(Environment::new()));
+
+        // 使用宏注册所有原生函数
+        register_natives!(global_env,
+            "clock" => ClockNative,
+            // 在这里添加其他原生函数，例如：
+            // "sqrt" => SqrtNative,
+        );
+
         Interpreter {
-            env: Rc::new(RefCell::new(Environment::new()))
+            env: global_env,
         }
     }
 
     /// 解释并执行给定的 AST 表达式。
     /// 返回一个 Result，包含执行结果或错误信息。
-    pub fn evaluate(&mut self, expr: &Expr) -> Result<MskValue, String> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<MskValue, RuntimeError> {
         match expr {
             Expr::Unary { operator, right } => {
                 let value = self.evaluate(&*right)?;
@@ -203,14 +217,14 @@ impl Interpreter {
                     TokenType::Number => {
                         match value.literal.as_ref().unwrap() {
                             Literal::Number(n) => Ok(MskValue::Float(*n)),
-                            _ => Err(format!("Unexpected number type for token: {}", value.lexeme)),
+                            _ => Err(format!("Unexpected number type for token: {}", value.lexeme).into()),
                         }
                     }
                     TokenType::True => Ok(MskValue::Boolean(true)),
                     TokenType::False => Ok(MskValue::Boolean(false)),
                     TokenType::Nil => Ok(MskValue::Nil),
                     _ => {
-                        Err(format!("Unexpected token type: {:?}", value.token_type))
+                        Err(format!("Unexpected token type: {:?}", value.token_type).into())
                     }
                 }
             },
@@ -236,63 +250,78 @@ impl Interpreter {
                 let right_value = self.evaluate(&*right)?;
                 Ok(right_value)
             }
+            Expr::Call { callee, paren, arguments } => {
+                let callee_value = self.evaluate(&*callee)?;
+                let mut args = Vec::new();
+                for arg in arguments {
+                    args.push(self.evaluate(&*arg)?);
+                }
+                if let MskValue::Callable(func) = callee_value {
+                    if args.len() != func.arity() {
+                        return Err(format!("[line {}] Expected {} arguments but got {}.", paren.line, func.arity(), args.len()).into());
+                    }
+                    func.call(self, args)
+                } else {
+                    Err(format!("[line {}] Can only call functions and classes.", paren.line).into())
+                }
+            }
         }
     }
-    fn evaluate_binary(&self, operator: &Token, left: MskValue, right: MskValue) -> Result<MskValue, String> {
+    fn evaluate_binary(&self, operator: &Token, left: MskValue, right: MskValue) -> Result<MskValue, RuntimeError> {
         match operator.token_type {
             TokenType::Plus => match (left, right) {
                 (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Float(l + r)),
                 (MskValue::String(l), MskValue::String(r)) => Ok(MskValue::String(format!("{}{}", l, r))),
-                _ => Err(format!("[line {}] Operands must be two numbers or two strings for '+' operator.", operator.line)),
+                _ => Err(format!("[line {}] Operands must be two numbers or two strings for '+' operator.", operator.line).into()),
             },
             TokenType::Minus => match (left, right) {
                 (MskValue::Float(l), MskValue::Float(r)) => Ok(MskValue::Float(l - r)),
-                _ => Err(format!("[line {}] Operands must be numbers for '-' operator.", operator.line)),
+                _ => Err(format!("[line {}] Operands must be numbers for '-' operator.", operator.line).into()),
             },
             TokenType::Star => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Float(l * r))
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '*' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '*' operator.", operator.line).into())
                 }
             },
             TokenType::Slash => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     if r == 0.0 {
-                        Err(format!("[line {}] Division by zero is not allowed.", operator.line))
+                        Err(format!("[line {}] Division by zero is not allowed.", operator.line).into())
                     } else {
                         Ok(MskValue::Float(l / r))
                     }
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '/' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '/' operator.", operator.line).into())
                 }
             },
             TokenType::Greater => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Boolean(l > r))
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '>' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '>' operator.", operator.line).into())
                 }
             },
             TokenType::GreaterEqual => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Boolean(l >= r))
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '>=' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '>=' operator.", operator.line).into())
                 }
             },
             TokenType::Less => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Boolean(l < r))
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '<' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '<' operator.", operator.line).into())
                 }
             },
             TokenType::LessEqual => {
                 if let (MskValue::Float(l), MskValue::Float(r)) = (left, right) {
                     Ok(MskValue::Boolean(l <= r))
                 } else {
-                    Err(format!("[line {}] Operands must be numbers for '<=' operator.", operator.line))
+                    Err(format!("[line {}] Operands must be numbers for '<=' operator.", operator.line).into())
                 }
             }
             TokenType::EqualEqual => {
@@ -313,23 +342,22 @@ impl Interpreter {
                     _ => Ok(MskValue::Boolean(true)), 
                 }
             }
-            _ => Err(format!("[line {}] Unsupported binary operator: {:?}", operator.line, operator)),
+            _ => Err(format!("[line {}] Unsupported binary operator: {:?}", operator.line, operator).into()),
         }
     }
-    fn evaluate_unary(&self, operator: &Token, value: MskValue) -> Result<MskValue, String> {
+    fn evaluate_unary(&self, operator: &Token, value: MskValue) -> Result<MskValue, RuntimeError> {
         match operator.token_type {
             TokenType::Minus => {
                 if let MskValue::Float(n) = value {
                     Ok(MskValue::Float(-n))
                 } else {
-                    Err(format!("[line {}] Operand must be a number.", operator.line))
+                    Err(format!("[line {}] Operand must be a number.", operator.line).into())
                 }
             }
             TokenType::Bang => {
                 Ok(MskValue::Boolean(!value.is_true()))
             }
-            _ => Err(format!("[line {}] Unsupported unary operator", operator.line))
+            _ => Err(format!("[line {}] Unsupported unary operator", operator.line).into())
         }
     }
-    // 其他方法...
 }

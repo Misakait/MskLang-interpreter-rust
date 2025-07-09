@@ -10,16 +10,22 @@ mod msk_value;
 mod interpreter;
 mod environment;
 mod control_flow;
+mod callable;
+mod native_fun;
 
-use std::env; // 用于处理命令行参数
-use std::fs; // 用于文件系统操作，如读取文件
-use std::io::{self, Write}; // 用于 I/O 操作，特别是向 stderr 写入错误信息
-use std::process::exit; // 用于以特定的退出码终止程序
+use std::env;
+// 用于处理命令行参数
+use std::fs;
+// 用于文件系统操作，如读取文件
+use std::io::{self, Write};
+// 用于 I/O 操作，特别是向 stderr 写入错误信息
+use std::process::exit;
+// 用于以特定的退出码终止程序
 
+use crate::interpreter::RuntimeError;
+use parser::Parser;
 // 从我们自己的模块中导入所需的结构体。
 use scanner::Scanner;
-use parser::Parser;
-use crate::interpreter::RuntimeError;
 
 /// 程序的主函数。
 fn main() {
@@ -70,7 +76,7 @@ fn main() {
             // 如果没有错误并且成功生成了 AST，则打印它
             if !had_error {
                 if let Some(expr) = expr_option {
-                    println!("{}", expr.to_string_sexpr());
+                    println!("{}", expr.to_string_expr());
                 }
             }
         }
@@ -92,10 +98,11 @@ fn main() {
                     let mut interpreter = interpreter::Interpreter::new();
                     match interpreter.evaluate(&expr) {
                         Ok(value) => println!("{}", value),
-                        Err(e) => {
+                        Err(RuntimeError::Error(e)) => {
                             writeln!(io::stderr(), "Runtime error: {}", e).unwrap();
                             interpreter_error = true;
-                        }
+                        },
+                        _=>{}
                     }
                 }
             }
