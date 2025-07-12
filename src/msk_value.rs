@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use crate::callable::Callable;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone)]
 pub enum MskValue {
@@ -25,7 +25,17 @@ impl Display for MskValue {
         }
     }
 }
-
+impl Debug for MskValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MskValue::Float(n) => write!(f, "Float({})", n),
+            MskValue::Boolean(b) => write!(f, "Boolean({})", b),
+            MskValue::String(s) => write!(f, "String({})", s),
+            MskValue::Callable(_) => write!(f, "<fn>"),
+            MskValue::Nil => write!(f, "Nil"),
+        }
+    }
+}
 impl MskValue {
     pub fn is_true(&self) -> bool {
         match self {

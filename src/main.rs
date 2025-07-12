@@ -12,6 +12,7 @@ mod environment;
 mod control_flow;
 mod callable;
 mod native_fun;
+mod user_fun;
 
 use std::env;
 // 用于处理命令行参数
@@ -20,6 +21,7 @@ use std::fs;
 use std::io::{self, Write};
 // 用于 I/O 操作，特别是向 stderr 写入错误信息
 use std::process::exit;
+use log::info;
 // 用于以特定的退出码终止程序
 
 use crate::interpreter::RuntimeError;
@@ -29,6 +31,8 @@ use scanner::Scanner;
 
 /// 程序的主函数。
 fn main() {
+    std::env::set_var("RUST_LOG", "info");
+    pretty_env_logger::init();
     // 收集命令行参数。
     let args: Vec<String> = env::args().collect();
     // 需要至少两个参数：命令（如 `parse`）和文件名。
@@ -37,7 +41,6 @@ fn main() {
         writeln!(io::stderr(), "Usage: {} <command> <filename>", args[0]).unwrap();
         return;
     }
-    
     let command = &args[1];
     let filename = &args[2];
     let mut had_error = false;
@@ -111,11 +114,9 @@ fn main() {
             // 1. 扫描阶段
             let scanner = Scanner::new(&file_contents);
             let (tokens, had_scanner_error) = scanner.scan_tokens();
-
             // 2. 解析阶段
             let mut parser = Parser::new(tokens);
             let (stmts_option, had_parser_error) = parser.parse();
-
             // 检查在任何阶段是否发生了错误
             had_error = had_scanner_error || had_parser_error;
 

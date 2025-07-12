@@ -1,10 +1,14 @@
 //! parser.rs - 负责解析由 Scanner 生成的 Token 序列，并构建抽象语法树（AST）。
 //! 这是解释器的语法分析阶段。
 
+use log::error;
 use crate::ast::Stmt::Expression;
 use crate::ast::{Expr, Stmt};
 use crate::token::{Token, TokenType};
 use std::cell::Cell;
+use std::process::exit;
+use std::rc::Rc;
+use log::info;
 
 /// Parser 结构体接收一个 Token 序列，并根据 Lox 语言的语法规则进行解析。
 pub struct Parser {
@@ -37,6 +41,7 @@ impl Parser {
         while !self.is_at_end() {
             stmts.push(self.statement());
         }
+
         // if !self.is_at_end() {
         //     // self.error(self.peek(), "Expect end of expression.");
         // }
@@ -73,7 +78,73 @@ impl Parser {
         if self.match_token(&[TokenType::Continue]) {
             return self.continue_statement();
         }
+        if self.match_token(&[TokenType::Fun]){
+            return self.function_statement();
+        }
+        if self.match_token(&[TokenType::Return]) {
+            return self.return_statement();
+        }
         self.expression_statement()
+    }
+    fn return_statement(&mut self) -> Stmt {
+        let name = self.previous().clone();
+        let mut value = None;
+        if !self.check(&TokenType::Semicolon) {
+            value = Some(self.expression());
+        }
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.");
+        Stmt::Return { name, value }
+    }
+    fn function_statement(&mut self) -> Stmt {
+        if self.match_token(&[TokenType::Identifier]) {
+            let name = self.previous().clone();
+            self.consume(TokenType::LeftParen, "Expect '(' after function name.");
+
+            let mut parameters = Vec::new();
+            while self.match_token(&[TokenType::Identifier]) {
+                let parameter = self.previous().clone();
+                parameters.push(parameter);
+                if self.match_token(&[TokenType::RightParen]) {
+                    break;
+                }
+                self.consume(TokenType::Comma, "Expect ',' after parameter.");
+                if self.check(&TokenType::Identifier) {
+                    continue;
+                } else {
+                    self.error(self.peek(), "Expect parameter name.");
+                    break;
+                }
+            }
+            if parameters.is_empty() {
+                if !self.match_token(&[TokenType::RightParen]) {
+                    self.error(self.peek(), "Expect ')' after left brace.");
+                }
+            }
+            if self.match_token(&[TokenType::LeftBrace]) {
+                // 处理块语句
+                let body = self.block_statement();
+                return Stmt::Function {
+                    name,
+                    params: parameters,
+                    body: Rc::new(body),
+                }
+            } else {
+                self.error(self.peek(), "Expect '{' after function parameters.");
+            }
+
+        }else{
+            self.error(self.peek(), "Expect Identifier after function parameters.");
+        }
+        Stmt::Function {
+            name: Token {
+                token_type: TokenType::Identifier,
+                lexeme: "anonymous".to_string(),
+                literal: None,
+                line: self.peek().line,
+            },
+            params: Vec::new(),
+            body: Rc::new(Stmt::Block { statements: vec![] }),
+        }
     }
     fn for_statement(&mut self) -> Stmt {
         let name = self.previous().clone();
@@ -445,5 +516,6 @@ impl Parser {
             );
         }
         self.had_error.set(true);
+        exit(65);
     }
 }

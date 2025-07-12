@@ -7,10 +7,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::slice;
+use log::info;
+use pretty_env_logger::env_logger::init_from_env;
 use crate::callable::Callable;
 use crate::native_fun::ClockNative;
 use crate::register_natives;
-
+use crate::user_fun::UserFunction;
+#[derive(Debug)]
 pub enum RuntimeError {
     Error(String),
     Control(ControlFlow),
@@ -20,12 +23,12 @@ impl From<String> for RuntimeError {
         RuntimeError::Error(error)
     }
 }
-struct ScopeGuard<'a> {
-    interpreter: &'a mut Interpreter,
+pub struct ScopeGuard<'a> {
+    pub interpreter: &'a mut Interpreter,
 }
 
 impl<'a> ScopeGuard<'a> {
-    fn new(interpreter: &'a mut Interpreter) -> Self {
+    pub fn new(interpreter: &'a mut Interpreter) -> Self {
         interpreter.begin_scope();  // 构造时进入作用域
         ScopeGuard { interpreter }
     }
@@ -37,15 +40,15 @@ impl<'a> Drop for ScopeGuard<'a> {
     }
 }
 pub struct Interpreter {
-    env: Rc<RefCell<Environment>>,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
-    pub fn interpret(&mut self, stmt: &[Stmt]) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, stmt: &[Stmt]) -> Result<MskValue, RuntimeError> {
         for stmt in stmt {
             match stmt {
                 Stmt::Expression { expression } => {
-                    self.evaluate(&expression)?;
+                    return self.evaluate(&expression)
                 }
                 Stmt::Print { expression } => {
                     let value = self.evaluate(&expression)?;
@@ -63,19 +66,21 @@ impl Interpreter {
                     let guard = ScopeGuard::new(self);
                     guard.interpreter.interpret(statements)?;
                 }
-                Stmt::If { name, condition,then_branch,else_branch } => {
+                Stmt::If { name, condition, then_branch, else_branch } => {
                     let condition = self.evaluate(&condition)?;
                     // if let MskValue::Boolean(value) = condition {
                     let value = condition.is_true();
-                        if value {
-                            let stmt_wrapper = slice::from_ref(&**then_branch);
-                            self.interpret(stmt_wrapper)?
-                        }else{
-                            if let Some(else_branch) = else_branch {
-                                let stmt_wrapper = slice::from_ref(&**else_branch);
-                                self.interpret(stmt_wrapper)?;
-                            }
+                    if value {
+                        let stmt_wrapper = slice::from_ref(&**then_branch);
+                        return self.interpret(stmt_wrapper)
+                    } else {
+                        if let Some(else_branch) = else_branch {
+                            let stmt_wrapper = slice::from_ref(&**else_branch);
+                            return self.interpret(stmt_wrapper)
+                            // let result = self.interpret(stmt_wrapper)?;
+                            // return Ok(result);
                         }
+                    }
                     // }else{
                     //     return Err(format!("[line {}] Condition must be a boolean.", name.line));
                     // }
@@ -84,7 +89,7 @@ impl Interpreter {
                     let stmt_wrapper = slice::from_ref(&**body);
                     while self.evaluate(condition)?.is_true() {
                         match self.interpret(stmt_wrapper) {
-                            Ok(()) => {}, // 正常执行
+                            Ok(_) => {}, // 正常执行
                             Err(RuntimeError::Control(ControlFlow::Break)) => {
                                 break; // 遇到 Break 语句，退出循环
                             }
@@ -95,7 +100,7 @@ impl Interpreter {
                         }
                     }
                 }
-                Stmt::For { name, initializer, condition, increment, body } =>{
+                Stmt::For { name, initializer, condition, increment, body } => {
                     let guard = ScopeGuard::new(self);
                     // let stmt_wrapper = if let Stmt::Block { statements } = &**body {
                     //     statements.as_slice()
@@ -110,11 +115,11 @@ impl Interpreter {
                             guard.interpreter.interpret(expr_slice)?;
                         }
                     }
-                    match condition{
+                    match condition {
                         Some(cond) => {
                             while guard.interpreter.evaluate(cond)?.is_true() {
                                 match guard.interpreter.interpret(stmt_wrapper) {
-                                    Ok(()) => {}, // 正常执行
+                                    Ok(_) => {}, // 正常执行
                                     Err(RuntimeError::Control(ControlFlow::Break)) => {
                                         break; // 遇到 Break 语句，退出循环
                                     }
@@ -132,9 +137,9 @@ impl Interpreter {
                             }
                         }
                         None => {
-                            loop{
+                            loop {
                                 match guard.interpreter.interpret(stmt_wrapper) {
-                                    Ok(()) => {}, // 正常执行
+                                    Ok(_) => {}, // 正常执行
                                     Err(RuntimeError::Control(ControlFlow::Break)) => {
                                         break; // 遇到 Break 语句，退出循环
                                     }
@@ -152,8 +157,6 @@ impl Interpreter {
                             }
                         } // 如果没有条件，直接进入循环
                     }
-
-
                 }
                 Stmt::Break { .. } => {
                     return Err(RuntimeError::Control(ControlFlow::Break));
@@ -161,9 +164,32 @@ impl Interpreter {
                 Stmt::Continue { .. } => {
                     return Err(RuntimeError::Control(ControlFlow::Continue));
                 }
+                Stmt::Function { name, params, body } => {
+                    let func = MskValue::Callable(Rc::new(
+                        UserFunction {
+                            name: name.lexeme.clone(),
+                            params: params.clone(),
+                            body: (*body).clone(),
+                            closure: self.env.clone(),
+                        }
+                    ));
+                    self.env.borrow_mut().define(&name.lexeme, func);
+                }
+                Stmt::Return { name, value } => {
+                    // info!("Returning the value: {:?}", value);
+                    return match value {
+                        None => {
+                            Ok(MskValue::Nil)
+                        }
+                        Some(value) => {
+                            // Err(RuntimeError::Control(ControlFlow::Return(self.evaluate(value)?)))
+                            Ok(self.evaluate(value)?)
+                        }
+                    }
+                }
             }
         }
-        Ok(())
+        Ok(MskValue::Nil)
     }
 }
 impl Interpreter {
@@ -253,6 +279,7 @@ impl Interpreter {
             Expr::Call { callee, paren, arguments } => {
                 let callee_value = self.evaluate(&*callee)?;
                 let mut args = Vec::new();
+                // info!("Callee: {:?}, Arguments: {:?}", callee_value, arguments);
                 for arg in arguments {
                     args.push(self.evaluate(&*arg)?);
                 }
@@ -260,7 +287,10 @@ impl Interpreter {
                     if args.len() != func.arity() {
                         return Err(format!("[line {}] Expected {} arguments but got {}.", paren.line, func.arity(), args.len()).into());
                     }
-                    func.call(self, args)
+                    // func.call(self, args)
+                    let result = func.call(self, args);
+                    // info!("Result: {:?}",  result);
+                    result
                 } else {
                     Err(format!("[line {}] Can only call functions and classes.", paren.line).into())
                 }

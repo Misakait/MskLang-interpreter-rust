@@ -2,10 +2,12 @@
 //! AST 是解析器将源代码的语法结构进行模型化的方式。
 
 use std::fmt::format;
+use std::rc::Rc;
 use crate::token::{Literal, Token};
 
 /// Expr 枚举代表了 Lox 语言中所有可能的表达式。
 /// 使用 Box<Expr> 来处理递归的枚举类型，避免无限大小的问题。
+#[derive(Debug)]
 pub enum Expr {
     /// 一元运算表达式，例如 `-5` 或 `!true`
     Unary {
@@ -43,6 +45,7 @@ pub enum Expr {
         paren: Token,
         arguments: Vec<Expr>,
     },
+
 }
 
 impl Expr {
@@ -106,6 +109,7 @@ impl Expr {
         }
     }
 }
+#[derive(Debug)]
 pub enum Stmt{
     Print {
         expression: Expr,
@@ -144,5 +148,14 @@ pub enum Stmt{
     },
     Continue {
         name: Token,
+    },
+    Function {
+        name: Token,
+        params: Vec<Token>,
+        body: Rc<Stmt>,
+    },
+    Return {
+        name: Token,
+        value: Option<Expr>,
     },
 }
