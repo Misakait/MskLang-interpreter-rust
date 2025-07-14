@@ -287,10 +287,10 @@ impl Interpreter {
                     if args.len() != func.arity() {
                         return Err(format!("[line {}] Expected {} arguments but got {}.", paren.line, func.arity(), args.len()).into());
                     }
-                    // func.call(self, args)
-                    let result = func.call(self, args);
+                    func.call(self, args)
+                    // let result = func.call(self, args);
                     // info!("Result: {:?}",  result);
-                    result
+                    // result
                 } else {
                     Err(format!("[line {}] Can only call functions and classes.", paren.line).into())
                 }

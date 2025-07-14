@@ -92,6 +92,7 @@ impl Parser {
         if !self.check(&TokenType::Semicolon) {
             value = Some(self.expression());
         }
+        info!("[return] {:?}", value);
         self.consume(TokenType::Semicolon, "Expect ';' after return value.");
         Stmt::Return { name, value }
     }
@@ -407,16 +408,47 @@ impl Parser {
             }
             if self.match_token(&[TokenType::RightParen]) {
                 let paren = self.previous().clone();
-                return Expr::Call {
+                let expr = Expr::Call {
                     callee: Box::new(callee),
                     paren,
                     arguments,
+                };
+                // return Expr::Call {
+                //     callee: Box::new(callee),
+                //     paren,
+                //     arguments,
+                // }
+                if self.match_token(&[TokenType::LeftParen]) {
+                    let mut arguments2 = Vec::new();
+                    while !self.check(&TokenType::RightParen) {
+                        arguments2.push(self.expression());
+                        if self.check(&TokenType::RightParen){
+                            break;
+                        }
+                        self.consume(TokenType::Comma, "Expect ',' after argument.");
+                    }
+                    if self.match_token(&[TokenType::RightParen]) {
+                        let paren = self.previous().clone();
+                        Expr::Call {
+                            callee: Box::new(expr),
+                            paren,
+                            arguments: arguments2,
+                        }
+                    }else{
+                        self.error(self.peek(), "Expect ')' after arguments.");
+                        unreachable!()
+                }
+                }else{
+                    expr
                 }
             }else{
                 self.error(self.peek(), "Expect ')' after arguments.");
+                unreachable!()
             }
+        }else {
+            callee
         }
-        callee
+        // callee
     }
     /// 解析一个主表达式。
     /// primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
